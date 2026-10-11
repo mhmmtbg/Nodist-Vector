@@ -109,12 +109,14 @@ class RoundTripTest {
         val text = String(bytes, Charsets.ISO_8859_1)
         val own = "(" + AiExporter.PRODUCER + ")"
         assertTrue(own in text)
-        val foreign = text.replace(own, "(Another PDF Writer)").toByteArray(Charsets.ISO_8859_1)
+        val foreign = text.replace(own, "(Other)").toByteArray(Charsets.ISO_8859_1)
         assertEquals(bytes.size, foreign.size)
         assertEquals(listOf(true, true), AiImporter.import(bytes, "a").document.layers.map { it.locked })
         val back = AiImporter.import(foreign, "a")
         assertEquals(listOf(false, false), back.document.layers.map { it.locked })
         assertEquals(listOf("01 Zemin", "02 Desen"), back.document.layers.map { it.name })
+        // Uygulamanın eski adıyla kaydedilmiş dosyalar hâlâ kendi dosyası sayılır.
+        assertTrue("Mobile Illustrator" in AiExporter.PRODUCERS && AiExporter.PRODUCER in AiExporter.PRODUCERS)
     }
 
     @Test

@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "store" / "raw"
 OUT = ROOT / "fastlane" / "metadata" / "android"
 
-APP_NAME = "Mobile Illustrator"
+APP_NAME = "Nodea"
 LOCALES = {"tr": "tr-TR", "en": "en-US"}
 TAGLINE = {
     "tr": "Katmanlı vektör çizim.\nAI, PDF ve SVG dosyalarını aç, düzenle, kaydet.",
@@ -40,7 +40,7 @@ CAPTIONS = {
     },
 }
 DEVICES = {"phone": "phoneScreenshots", "tablet7": "sevenInchScreenshots", "tablet10": "tenInchScreenshots"}
-BG_TOP = (0x2B, 0x1A, 0x0E)
+BG_TOP = (0x15, 0x1A, 0x30)
 BG_BOTTOM = (0x1E, 0x1E, 0x20)
 FONT_CANDIDATES = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",

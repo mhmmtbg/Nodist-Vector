@@ -61,7 +61,7 @@ fun main(args: Array<String>) {
                 vm.flushAutosaveNow()
                 exitApplication()
             },
-            title = "Mobile Illustrator",
+            title = "Nodea",
             state = rememberWindowState(width = 1280.dp, height = 820.dp),
             icon = androidx.compose.ui.res.painterResource("icon.png"),
             onKeyEvent = { event -> handleShortcut(event, vm, host, ::save) },
@@ -142,7 +142,7 @@ private fun installCrashLog(file: File) {
         try {
             val trace = StringWriter().also { error.printStackTrace(PrintWriter(it)) }.toString()
             file.writeText(
-                "Mobile Illustrator (masaüstü)\n${System.getProperty("os.name")} ${System.getProperty("os.version")}, Java ${System.getProperty("java.version")}\n" +
+                "Nodea (masaüstü)\n${System.getProperty("os.name")} ${System.getProperty("os.version")}, Java ${System.getProperty("java.version")}\n" +
                     "İş parçacığı: ${thread.name}\n\n$trace",
             )
         } catch (e: Throwable) {

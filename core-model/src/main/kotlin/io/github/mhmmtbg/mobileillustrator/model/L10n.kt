@@ -158,7 +158,7 @@ object L10n {
         "Çalışman otomatik kaydedildiği için yerinde olmalı. Hatanın ayrıntısı cihazında kaydedildi; düzeltilebilmesi için raporu geliştiriciyle paylaşabilirsin. Rapor yalnızca teknik hata bilgisini ve cihaz modelini içerir." to "Your work is saved automatically, so it should still be there. The error details were stored on your device; you can share the report with the developer so it can be fixed. It contains only technical error details and your device model.",
         "Kapat" to "Close",
         "Raporu paylaş" to "Share report",
-        "Mobile Illustrator çökme raporu" to "Mobile Illustrator crash report",
+        "Nodea çökme raporu" to "Nodea crash report",
         "Katman paneli" to "Layer panel",
         "Katman ekle" to "Add layer",
         "Paneli kapat" to "Close panel",

@@ -12,11 +12,12 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "io.github.mhmmtbg.mobileillustrator"
+        // Mağazadaki kalıcı paket kimliği. Kod paketleri (namespace) ayrıdır ve değişmeden kalır.
+        applicationId = "io.github.mhmmtbg.nodea"
         minSdk = 26
         targetSdk = 36
         versionCode = ciVersionCode
-        versionName = "0.2.$ciVersionCode"
+        versionName = "1.0.$ciVersionCode"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Reklam kimlikleri depoya yazılmaz; CI'da gizli değişkenlerden gelir. Tanımlı değilse Google'ın

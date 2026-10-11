@@ -7,7 +7,7 @@ sonra Play Console.
 
 | Ne | Nerede |
 | --- | --- |
-| Mağaza paketi (AAB) | Her derlemenin [Releases](../../../releases) sayfasında `mobile-illustrator-N.aab` |
+| Mağaza paketi (AAB) | Her derlemenin [Releases](../../../releases) sayfasında `nodea-N.aab` |
 | Başlık, kısa ve uzun açıklama (TR, EN) | `fastlane/metadata/android/<dil>/*.txt` |
 | Simge 512×512 | `fastlane/metadata/android/<dil>/images/icon.png` |
 | Öne çıkan görsel 1024×500 | `…/images/featureGraphic.png` |
@@ -19,20 +19,18 @@ Görselleri yeniden üretmek için: `./gradlew :desktop:storeScreenshots` ve ard
 `python3 store/make_listing.py`. Ekran görüntüleri uygulamanın gerçek ekranlarıdır (Android ile ortak
 arayüz kodu, masaüstü çizicisiyle görüntüye çizilir); yazı tipi telefondakinden biraz farklıdır.
 
-## 1. Uygulamanın adı ve simgesi (yüklemeden önce karar ver)
+## 1. Ad, simge ve paket kimliği
 
-"Illustrator" Adobe'nin tescilli markasıdır. Bu adla yüklenen bir uygulama Google Play'in "başkasının
-markasını kullanma / taklit" kurallarına takılabilir; Adobe'nin şikâyetiyle de kaldırılabilir. Koyu
-kahverengi zemin üzerine turuncu simge de Illustrator'ın simgesini andırıyor. Mağazaya çıkmadan önce
-adı ve simge renklerini değiştirmeni öneririm. Ad değişirse:
+- Ad: **Nodea** (mağaza başlığı "Nodea: Vektör Çizim" / "Nodea: Vector Design").
+- Paket kimliği: **`io.github.mhmmtbg.nodea`**. Mağazaya ilk yüklemeden sonra bir daha değiştirilemez.
+- Simge: lacivert zemin üzerinde düğümleri ve tutamaçlarıyla bir Bezier eğrisi.
 
-- `app/src/main/res/values/strings.xml` içindeki `app_name`
-- `fastlane/metadata/android/*/title.txt`
-- `store/make_listing.py` içindeki `APP_NAME` (sonra betiği yeniden çalıştır)
-- `desktop/build.gradle.kts` içindeki `packageName` ve pencere başlığı (`Main.kt`)
+Ad değişirse dokunulacak yerler: `app/src/main/res/values/strings.xml` (`app_name`),
+`fastlane/metadata/android/*/title.txt`, `store/make_listing.py` (`APP_NAME`, sonra betiği yeniden çalıştır),
+`desktop/build.gradle.kts` (`packageName`) ve pencere başlığı (`Main.kt`).
 
 Açıklamada "Illustrator (.ai) dosyalarını açar" demek, ürünün neyle uyumlu olduğunu anlatan bir
-kullanımdır ve açıklamanın sonunda Adobe ile bağlantı olmadığı yazılıdır.
+kullanımdır ve açıklamanın sonunda Adobe ile bağlantı olmadığı yazılıdır. Başlıkta ve simgede bu ad geçmez.
 
 ## 2. İmza anahtarı
 
@@ -64,7 +62,7 @@ ayıklama derlemesinde (otomatik testlerin kullandığı) reklam kapalıdır.
 
 ## 4. Play Console
 
-1. Uygulamayı oluştur (ücretsiz, uygulama). Paket adı: `io.github.mhmmtbg.mobileillustrator`.
+1. Uygulamayı oluştur (ücretsiz, uygulama). Paket adı: `io.github.mhmmtbg.nodea`.
 2. AAB'yi önce **dahili test** kanalına yükle. Satın alma ürünü ancak bir paket yüklendikten sonra tanımlanabilir.
 3. Para kazanma → Ürünler → Uygulama içi ürünler → ürün oluştur:
    - Ürün kimliği: **`coffee`** (uygulama bu kimliği arar; farklıysa `app/build.gradle.kts` içindeki `COFFEE_PRODUCT_ID`'yi değiştir)
@@ -87,9 +85,40 @@ ayıklama derlemesinde (otomatik testlerin kullandığı) reklam kapalıdır.
 Yeni açılmış kişisel geliştirici hesaplarında Google, üretime çıkmadan önce kapalı test (en az 12
 test kullanıcısı, 14 gün) şartı arar; hesabının durumunu Play Console'da görürsün.
 
+## 5. Otomatik yükleme (GitHub → Play)
+
+İlk paketi Play Console'dan elle yüklemen gerekir (Google, API ile ilk yüklemeye izin vermez). Sonraki
+her derleme kendiliğinden yüklenebilir:
+
+1. Google Cloud Console → bir proje seç → **Google Play Android Developer API**'yi etkinleştir.
+2. IAM → Hizmet hesapları → hizmet hesabı oluştur → Anahtarlar → **JSON** anahtarı indir.
+3. Play Console → Kullanıcılar ve izinler → Yeni kullanıcı davet et → hizmet hesabının e-posta adresini ekle;
+   bu uygulama için "Sürümleri test kanallarına yayınla" (ve istersen "Üretime yayınla") iznini ver.
+4. Depo gizli değişkeni: **`PLAY_SERVICE_ACCOUNT_JSON`** = indirdiğin JSON dosyasının tüm içeriği.
+
+Bundan sonra `main` dalına giden her derleme, testler geçerse AAB'yi **dahili test** kanalına taslak olarak
+yükler (iş akışındaki `play` işi). İsteğe bağlı depo değişkenleri (Settings → Secrets and variables →
+Actions → Variables):
+
+| Değişken | Varsayılan | Ne zaman değiştirilir |
+| --- | --- | --- |
+| `PLAY_TRACK` | `internal` | Kapalı test için `alpha`, açık test için `beta`, üretim için `production` |
+| `PLAY_RELEASE_STATUS` | `draft` | Uygulama ilk incelemeden geçip yayımlandıktan sonra `completed` (sürüm kendiliğinden yayına girer) |
+
+Gizli değişken tanımlı değilse ya da paket kendi anahtarınla imzalanmamışsa yükleme sessizce atlanır.
+
+## Gizli değişkenlerin tamamı
+
+| Ad | Ne için | Zorunlu mu |
+| --- | --- | --- |
+| `SIGNING_KEYSTORE_BASE64`, `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD` | Mağaza imzası | Evet |
+| `ADMOB_APP_ID`, `ADMOB_BANNER_ID` | Gerçek reklamlar | Evet (yoksa deneme reklamı gösterilir, gelir üretmez) |
+| `PLAY_SERVICE_ACCOUNT_JSON` | Otomatik yükleme | Hayır (AAB elle de yüklenebilir) |
+
 ## Henüz denenmemiş olanlar
 
 Bunlar ancak senin hesaplarınla denenebilir; kod yazıldı ve derleniyor ama gerçek mağaza ortamında çalıştırılmadı:
 
 - Satın alma akışı (ürün sorgusu, ödeme, onay, yeni cihazda geri yükleme)
 - Gerçek reklam birimiyle reklam gösterimi ve Avrupa onay penceresi
+- GitHub'dan Play'e otomatik yükleme (hizmet hesabı tanımlanınca ilk çalışmada görülür)

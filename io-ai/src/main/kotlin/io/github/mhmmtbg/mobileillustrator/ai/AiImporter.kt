@@ -136,7 +136,7 @@ object AiImporter {
         fun run(): ImportResult {
             val root = file.root
             val producer = file.string(file.dict(file.trailer["Info"])?.get("Producer"))?.text()
-            val ours = producer == AiExporter.PRODUCER
+            val ours = producer in AiExporter.PRODUCERS
             file.dict(file.dict(root["OCProperties"])?.get("D"))?.let { cfg ->
                 file.array(cfg["OFF"])?.forEach { (it as? PdfRef)?.let(off::add) }
                 // PDF'teki "Locked" listesi katmanın düzenlemeye kapalı olduğunu değil, görünürlüğünün okuyucuda

@@ -80,9 +80,9 @@ jobs:
         run: |
           mkdir -p dist/test
           # Yayımlanan dosya küçültülmüş sürüm derlemesidir; hata ayıklama derlemesi yalnızca testlerde kullanılır.
-          cp app/build/outputs/apk/release/app-release.apk "dist/mobile-illustrator-${VERSION_CODE}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "dist/nodea-${VERSION_CODE}.apk"
           # Google Play'e yüklenen paket (AAB). Mağaza yalnızca kendi anahtarınla imzalanmış paketi kabul eder.
-          cp app/build/outputs/bundle/release/app-release.aab "dist/mobile-illustrator-${VERSION_CODE}.aab"
+          cp app/build/outputs/bundle/release/app-release.aab "dist/nodea-${VERSION_CODE}.aab"
           cp app/build/outputs/apk/debug/app-debug.apk dist/test/app-debug.apk
           cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk dist/test/app-debug-androidTest.apk
           ls -la dist dist/test
@@ -91,7 +91,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: mobile-illustrator-apk
+          name: nodea-apk
           path: dist
 
       - name: Release yayınla
@@ -147,7 +147,7 @@ jobs:
       - name: Paketlenen uygulamayı çalıştır
         shell: pwsh
         run: |
-          $app = "desktop/build/compose/binaries/main/app/Mobile Illustrator/Mobile Illustrator.exe"
+          $app = "desktop/build/compose/binaries/main/app/Nodea/Nodea.exe"
           if (-not (Test-Path $app)) { Write-Output "::error title=Windows::Uygulama dosyası yok"; exit 1 }
           $out = Join-Path $PWD "windows-self-test.png"
           $env:APPDATA = Join-Path $env:RUNNER_TEMP "appdata"
@@ -162,14 +162,14 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          cp desktop/build/compose/binaries/main/exe/*.exe "dist/mobile-illustrator-setup-${VERSION_CODE}.exe"
-          (cd desktop/build/compose/binaries/main/app && 7z a -tzip -mx=7 "$GITHUB_WORKSPACE/dist/mobile-illustrator-windows-${VERSION_CODE}.zip" "Mobile Illustrator" > /dev/null)
+          cp desktop/build/compose/binaries/main/exe/*.exe "dist/nodea-setup-${VERSION_CODE}.exe"
+          (cd desktop/build/compose/binaries/main/app && 7z a -tzip -mx=7 "$GITHUB_WORKSPACE/dist/nodea-windows-${VERSION_CODE}.zip" "Nodea" > /dev/null)
           cp windows-self-test.png dist/windows-self-test.png
           ls -la dist
 
       - uses: actions/upload-artifact@v4
         with:
-          name: mobile-illustrator-windows
+          name: nodea-windows
           path: dist
 
       - name: Release'e ekle
@@ -199,7 +199,7 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: mobile-illustrator-apk
+          name: nodea-apk
           path: dist
 
       - name: KVM'i etkinleştir
@@ -230,3 +230,51 @@ jobs:
             exit 0
           fi
           gh release upload "build-${VERSION_CODE}" shots/*.png shots/*.txt $(ls shots/disa-aktarim.* 2>/dev/null | grep -v "\.png$" || true) --clobber
+
+  # Google Play'e yükleme (isteğe bağlı). PLAY_SERVICE_ACCOUNT_JSON gizli değişkeni tanımlıysa ve paket kendi
+  # anahtarınla imzalandıysa, bütün testler geçtikten sonra AAB mağazanın test kanalına gönderilir.
+  # Kanal ve durum depo değişkenleriyle ayarlanır: PLAY_TRACK (varsayılan "internal"),
+  # PLAY_RELEASE_STATUS (varsayılan "draft"; uygulama ilk incelemeden geçtikten sonra "completed" yapılır).
+  play:
+    needs: [build, smoke]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERSION_CODE: ${{ github.run_number }}
+      PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+      SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+    steps:
+      - name: Yükleme koşullarını denetle
+        id: gate
+        run: |
+          if [ -z "$PLAY_SERVICE_ACCOUNT_JSON" ]; then
+            echo "::notice title=Google Play::PLAY_SERVICE_ACCOUNT_JSON tanımlı değil; mağazaya yükleme atlandı."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "$SIGNING_KEYSTORE_BASE64" ]; then
+            echo "::warning title=Google Play::İmza anahtarı (SIGNING_KEYSTORE_BASE64) tanımlı değil; mağaza ortak anahtarla imzalanmış paketi kabul etmez. Yükleme atlandı."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/download-artifact@v4
+        if: steps.gate.outputs.go == 'true'
+        with:
+          name: nodea-apk
+          path: dist
+
+      - name: Google Play'e yükle
+        if: steps.gate.outputs.go == 'true'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: io.github.mhmmtbg.nodea
+          releaseFiles: dist/nodea-${{ github.run_number }}.aab
+          releaseName: "1.0.${{ github.run_number }}"
+          track: ${{ vars.PLAY_TRACK || 'internal' }}
+          status: ${{ vars.PLAY_RELEASE_STATUS || 'draft' }}
+
+      - name: Sonuç
+        if: steps.gate.outputs.go == 'true'
+        run: echo "::notice title=Google Play::nodea-${VERSION_CODE}.aab '${{ vars.PLAY_TRACK || 'internal' }}' kanalına yüklendi (durum ${{ vars.PLAY_RELEASE_STATUS || 'draft' }})."

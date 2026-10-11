@@ -8,7 +8,9 @@ APK=$1
 OUT=$2
 # "quick": yalnızca açılış, dosya açma ve katmanlar (küçültülmüş sürüm derlemesinin bozulmadığını görmek için).
 MODE=${3:-full}
-PKG=io.github.mhmmtbg.mobileillustrator
+PKG=io.github.mhmmtbg.nodea
+# Etkinlik sınıfı kod paketindedir; paket kimliğinden (mağaza adı) ayrıdır.
+ACTIVITY=io.github.mhmmtbg.mobileillustrator.MainActivity
 mkdir -p "$OUT"
 
 fail() {
@@ -92,7 +94,7 @@ L10N="$(dirname "$0")/../core-model/src/main/kotlin/io/github/mhmmtbg/mobileillu
 if adb shell "run-as $PKG sh -c 'mkdir -p files && echo tr > files/language'" > /dev/null 2>&1 \
   && [ "$(adb shell "run-as $PKG cat files/language" 2> /dev/null | tr -d '\r')" = tr ]; then EN=0; else EN=1; fi
 echo "Arayüz dili: $([ "$EN" = 1 ] && echo İngilizce || echo Türkçe)"
-adb shell am start -W -n "$PKG/.MainActivity"
+adb shell am start -W -n "$PKG/$ACTIVITY"
 sleep 8
 alive "açılış"
 wait_for "Dosya menüsü"
@@ -260,7 +262,7 @@ sleep 3
 adb shell input keyevent KEYCODE_HOME
 sleep 4
 adb shell am force-stop "$PKG"
-adb shell am start -W -n "$PKG/.MainActivity"
+adb shell am start -W -n "$PKG/$ACTIVITY"
 sleep 6
 wait_for "Dosya menüsü"
 wait_for "Gopher"
@@ -342,7 +344,7 @@ if [ -f "$STRESS" ]; then
   adb push "$STRESS" /data/local/tmp/stress.ai > /dev/null
   adb shell run-as "$PKG" cp /data/local/tmp/stress.ai files/stress.ai
   t0=$(date +%s)
-  adb shell am start -W -a android.intent.action.VIEW -d "file:///data/user/0/$PKG/files/stress.ai" -n "$PKG/.MainActivity" > /dev/null
+  adb shell am start -W -a android.intent.action.VIEW -d "file:///data/user/0/$PKG/files/stress.ai" -n "$PKG/$ACTIVITY" > /dev/null
   sleep 2
   wait_for "stress"
   t1=$(date +%s)

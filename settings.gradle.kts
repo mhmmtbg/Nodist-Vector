@@ -13,6 +13,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "mobile-illustrator"
+rootProject.name = "nodea"
 
 include(":app", ":core-model", ":core-render", ":io-svg", ":io-ai", ":desktop")

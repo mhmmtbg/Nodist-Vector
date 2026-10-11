@@ -1,12 +1,12 @@
 # Gizlilik Politikası / Privacy Policy
 
-Son güncelleme / Last updated: 2026-10-09
+Son güncelleme / Last updated: 2026-10-11
 
 > **Yayımlamadan önce:** aşağıdaki `İLETİŞİM-E-POSTASI` yerine kendi iletişim adresini yaz.
 
 ## Türkçe
 
-Bu politika Mobile Illustrator uygulaması (Android ve Windows) için geçerlidir.
+Bu politika Nodea uygulaması (Android ve Windows) için geçerlidir.
 
 **Uygulamanın kendisi hiçbir kişisel veri toplamaz.** Hesap açmaz, sunucusu yoktur.
 
@@ -21,7 +21,7 @@ Bu politika Mobile Illustrator uygulaması (Android ve Windows) için geçerlidi
 
 ## English
 
-This policy covers the Mobile Illustrator app (Android and Windows).
+This policy covers the Nodea app (Android and Windows).
 
 **The app itself collects no personal data.** There are no accounts and no server.
 

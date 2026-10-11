@@ -157,10 +157,14 @@ class DesktopDocumentIo(private val root: File) : DocumentIo(root) {
     companion object {
         /** Uygulamanın veri klasörü: Windows'ta %APPDATA%, diğerlerinde kullanıcının ev klasörü altında. */
         fun defaultRoot(): File {
-            System.getProperty("mobileillustrator.data")?.takeIf { it.isNotBlank() }?.let { return File(it) }
+            (System.getProperty("nodea.data") ?: System.getProperty("mobileillustrator.data"))?.takeIf { it.isNotBlank() }?.let { return File(it) }
             val appData = System.getenv("APPDATA")?.takeIf { it.isNotBlank() }
             val base = if (appData != null) File(appData) else File(System.getProperty("user.home"), ".local/share")
-            return File(base, "MobileIllustrator")
+            val root = File(base, "Nodea")
+            // Uygulamanın eski adıyla açılmış veri klasörü varsa (belgeler, fontlar) yeni ada taşınır.
+            val legacy = File(base, "MobileIllustrator")
+            if (!root.exists() && legacy.isDirectory && !legacy.renameTo(root)) return legacy
+            return root
         }
     }
 }

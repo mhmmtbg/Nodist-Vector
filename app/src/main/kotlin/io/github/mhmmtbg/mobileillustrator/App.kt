@@ -25,7 +25,7 @@ class App : Application() {
                 val trace = StringWriter().also { error.printStackTrace(PrintWriter(it)) }.toString()
                 val version = try { packageManager.getPackageInfo(packageName, 0).versionName } catch (e: Exception) { "?" }
                 crashFile(this).writeText(
-                    "Mobile Illustrator $version\n${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\n" +
+                    "Nodea $version\n${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\n" +
                         "İş parçacığı: ${thread.name}\n\n$trace",
                 )
             } catch (e: Throwable) {

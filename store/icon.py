@@ -6,9 +6,9 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
-BACKGROUND = (0x2B, 0x1A, 0x0E, 255)
+BACKGROUND = (0x15, 0x1A, 0x30, 255)
 ORANGE = (0xFF, 0x9A, 0x3C, 255)
-BROWN = (0xB3, 0x6A, 0x2A, 255)
+BROWN = (0x6C, 0x7B, 0xB0, 255)
 WHITE = (255, 255, 255, 255)
 
 

@@ -249,7 +249,7 @@ fun EditorScreen(vm: EditorViewModel, host: PlatformHost) {
         CrashDialog(
             onShare = {
                 vm.dismissCrashReport()
-                host.shareText(tr("Mobile Illustrator çökme raporu"), report)
+                host.shareText(tr("Nodea çökme raporu"), report)
             },
             onDismiss = vm::dismissCrashReport,
         )
