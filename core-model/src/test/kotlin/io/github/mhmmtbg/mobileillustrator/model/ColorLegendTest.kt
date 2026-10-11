@@ -64,4 +64,47 @@ class ColorLegendTest {
         assertTrue(group.bounds()!!.right <= board.right + 1.0)
         assertNull(Document.blank().withColorLegend())
     }
+
+    /** Tasarımın kendi lejantı: küçük renk kareleri ve yanlarında elle yazılmış (eskimiş) kodlar. */
+    private fun handMadeLegend(): Document {
+        fun swatch(id: String, x: Double, c: Int) = PathNode(id = id, subpaths = listOf(Shapes.rect(Rect(x, 20.0, x + 18, 38.0))), fill = Paint.Solid(Rgba.rgb(c)))
+        fun label(id: String, x: Double, t: String) = TextNode(id = id, text = t, fontSize = 8.0, transform = Matrix.translate(x, 32.0), measuredWidth = 34.0)
+        return Document(
+            artboards = listOf(Artboard(bounds = Rect(0.0, 0.0, 1000.0, 600.0))),
+            layers = listOf(
+                Layer(name = "Gövde", children = listOf(PathNode(id = "body", subpaths = listOf(Shapes.rect(Rect(100.0, 100.0, 500.0, 500.0))), fill = Paint.Solid(Rgba.rgb(0x080052))))),
+                Layer(
+                    name = "Bilgi",
+                    children = listOf(
+                        GroupNode(id = "g", transform = Matrix.translate(600.0, 0.0), children = listOf(swatch("s1", 0.0, 0x0B2654), label("t1", 24.0, "#6B6A42"))),
+                        swatch("s2", 700.0, 0x080052), label("t2", 724.0, "#2A2B18"),
+                        TextNode(id = "title", text = "ALTERNATİF #11", fontSize = 12.0, transform = Matrix.translate(50.0, 34.0)),
+                    ),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun recolouringUpdatesTheCodeWrittenNextToTheSwatch() {
+        val d = handMadeLegend().recolored(0x080052, Rgba.rgb(0x700022))
+        val r = d.syncedColorLabels(only = 0x700022)
+        assertEquals(1, r.changed)
+        assertEquals("#700022", (r.document.findNode("t2") as TextNode).text)
+        // Değişmeyen rengin etiketi ve başlık yerinde kalır.
+        assertEquals("#6B6A42", (r.document.findNode("t1") as TextNode).text)
+        assertEquals("ALTERNATİF #11", (r.document.findNode("title") as TextNode).text)
+        assertNull((r.document.findNode("t2") as TextNode).measuredWidth)
+    }
+
+    @Test
+    fun allStaleCodesCanBeCorrectedAtOnce() {
+        val r = handMadeLegend().syncedColorLabels()
+        assertEquals(2, r.changed)
+        assertEquals("#0B2654", (r.document.findNode("t1") as TextNode).text)
+        assertEquals("#080052", (r.document.findNode("t2") as TextNode).text)
+        assertEquals(0, r.document.syncedColorLabels().changed)
+        // Uygulamanın eklediği lejantın etiketleri zaten doğrudur.
+        assertEquals(0, doc(Rgba.rgb(0x6B6A42), Rgba.rgb(0xD8CBA0)).withColorLegend()!!.document.syncedColorLabels().changed)
+    }
 }

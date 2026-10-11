@@ -6,7 +6,7 @@ package io.github.mhmmtbg.mobileillustrator.model
  */
 class ColorGroup(val rgb: Int, val color: Rgba, val nodeIds: List<String>, val fills: Int, val strokes: Int)
 
-private fun Rgba.rgbKey(): Int = toArgb() and 0xFFFFFF
+internal fun Rgba.rgbKey(): Int = toArgb() and 0xFFFFFF
 
 private fun Paint.colors(): List<Rgba> = when (this) {
     is Paint.Solid -> listOf(color)

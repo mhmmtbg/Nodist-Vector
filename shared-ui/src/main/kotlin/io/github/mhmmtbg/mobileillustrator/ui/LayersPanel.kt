@@ -135,6 +135,7 @@ fun LayersPanel(vm: EditorViewModel, host: PlatformHost, modifier: Modifier = Mo
             onDismiss = { legend = false },
             onShare = { host.shareText(tr("%s renk kodları", trName(state.history.present.name)), vm.colorCodesText(it)) },
             onAdd = { legend = false; vm.addColorLegend(it) },
+            onSync = { legend = false; vm.syncColorLabels() },
         )
     }
     renaming?.let { id ->
@@ -145,7 +146,7 @@ fun LayersPanel(vm: EditorViewModel, host: PlatformHost, modifier: Modifier = Mo
 
 /** Renk lejantı: hangi kodların yazılacağı seçilir; lejant tasarıma eklenir ya da kodlar metin olarak paylaşılır. */
 @Composable
-private fun LegendDialog(onDismiss: () -> Unit, onShare: (LegendOptions) -> Unit, onAdd: (LegendOptions) -> Unit) {
+private fun LegendDialog(onDismiss: () -> Unit, onShare: (LegendOptions) -> Unit, onAdd: (LegendOptions) -> Unit, onSync: () -> Unit) {
     var hex by remember { mutableStateOf(true) }
     var rgb by remember { mutableStateOf(true) }
     var cmyk by remember { mutableStateOf(true) }
@@ -169,6 +170,8 @@ private fun LegendDialog(onDismiss: () -> Unit, onShare: (LegendOptions) -> Unit
                 check(tr("RGB değerleri"), rgb) { rgb = it }
                 check(tr("CMYK değerleri"), cmyk) { cmyk = it }
                 androidx.compose.material3.TextButton(onClick = { onShare(options) }, enabled = any) { Text(tr("Kodları metin olarak paylaş")) }
+                // Tasarımda elle yazılmış renk kodları varsa yanlarındaki renk örneğine göre düzeltilir.
+                androidx.compose.material3.TextButton(onClick = onSync) { Text(tr("Tasarımdaki renk kodlarını güncelle")) }
             }
         },
         confirmButton = { androidx.compose.material3.TextButton(onClick = { onAdd(options) }, enabled = any) { Text(tr("Tasarıma ekle")) } },

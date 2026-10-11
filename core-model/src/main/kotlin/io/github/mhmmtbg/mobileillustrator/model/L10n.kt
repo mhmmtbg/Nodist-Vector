@@ -372,6 +372,9 @@ object L10n {
         "CMYK değerleri" to "CMYK values",
         "Kodları metin olarak paylaş" to "Share codes as text",
         "Tasarıma ekle" to "Add to design",
+        "Tasarımdaki renk kodlarını güncelle" to "Update colour codes in the design",
+        "Güncellenecek renk kodu yok" to "No colour codes to update",
+        "%s renk kodu güncellendi" to "%s colour codes updated",
     )
 }
 

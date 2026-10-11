@@ -60,6 +60,7 @@ import io.github.mhmmtbg.mobileillustrator.model.LegendOptions
 import io.github.mhmmtbg.mobileillustrator.model.colorCodesText
 import io.github.mhmmtbg.mobileillustrator.model.withColorLegend
 import io.github.mhmmtbg.mobileillustrator.model.legendOptions
+import io.github.mhmmtbg.mobileillustrator.model.syncedColorLabels
 import io.github.mhmmtbg.mobileillustrator.model.deleteAnchor
 import io.github.mhmmtbg.mobileillustrator.model.duplicate
 import io.github.mhmmtbg.mobileillustrator.model.findLayer
@@ -1271,6 +1272,8 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
         val count = present.colorGroups().firstOrNull { it.rgb == rgb }?.nodeIds?.size ?: return
         onDragCancel()
         var doc = present.recolored(rgb, to)
+        // Tasarımın kendi lejantı varsa (renk örneği + "#RRGGBB" yazısı) yazıdaki kod da yeni renge çevrilir.
+        doc = doc.syncedColorLabels(only = to.toArgb() and 0xFFFFFF).document
         // Tasarımda renk lejantı varsa o da yeni renklerle yenilenir (yeri ve boyutu baştan kurulur).
         present.legendOptions()?.let { options -> doc.withColorLegend(options)?.let { doc = it.document } }
         commit(doc) { s ->
@@ -1280,6 +1283,17 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
 
     /** Tasarımdaki renklerin kodları (onaltılık, RGB, CMYK); paylaşmak için düz metin. */
     fun colorCodesText(options: LegendOptions): String = present.colorCodesText(options)
+
+    /** Tasarımdaki bütün renk kodu yazılarını yanlarındaki renk örneğine göre düzeltir. */
+    fun syncColorLabels() {
+        val result = present.syncedColorLabels()
+        if (result.changed == 0) {
+            state = state.copy(message = tr("Güncellenecek renk kodu yok"))
+            return
+        }
+        onDragCancel()
+        commit(result.document) { it.copy(message = tr("%s renk kodu güncellendi", result.changed)) }
+    }
 
     /** Tasarımda kullanılan renklerin lejantını çalışma yüzeyinin altına ekler (varsa eskisini yeniler). */
     fun addColorLegend(options: LegendOptions) {

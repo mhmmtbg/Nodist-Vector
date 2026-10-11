@@ -120,3 +120,64 @@ fun Document.withColorLegend(options: LegendOptions = LegendOptions()): LegendRe
     val layer = Layer(name = LEGEND_LAYER, children = listOf(group))
     return LegendResult(base.copy(layers = base.layers + layer), group.id, colors.size)
 }
+
+private val HexToken = Regex("#[0-9A-Fa-f]{6}(?![0-9A-Fa-f])")
+
+/** Etiketleri güncellemenin sonucu: yeni belge ve değişen etiket sayısı. */
+class LabelSync(val document: Document, val changed: Int)
+
+/**
+ * Tasarımdaki renk kodu yazılarını yanlarındaki renk örneğiyle eşitler. Bir yazı "#RRGGBB" içeriyorsa ve hemen solunda,
+ * aynı hizada küçük bir dolu şekil (renk örneği) duruyorsa, yazıdaki kod o şeklin rengine çevrilir; "RGB …" ve "CMYK …"
+ * satırları da varsa onlar da yenilenir. [only] verilirse yalnızca örneği o renkte (`0xRRGGBB`) olan etiketler değişir.
+ * Kilitli katman ve nesnelere dokunulmaz.
+ */
+fun Document.syncedColorLabels(only: Int? = null): LabelSync {
+    class Swatch(val box: Rect, val color: Rgba)
+    class Label(val id: String, val box: Rect, val text: String)
+    val swatches = ArrayList<Swatch>()
+    val labels = ArrayList<Label>()
+    fun walk(nodes: List<Node>, m: Matrix) {
+        for (n in nodes) {
+            if (!n.visible) continue
+            when (n) {
+                is PathNode -> (n.fill as? Paint.Solid)?.let { fill -> n.boundsIn(m)?.let { swatches += Swatch(it, fill.color) } }
+                is TextNode -> if (!n.locked && n.text.length <= 80 && HexToken.containsMatchIn(n.text)) n.boundsIn(m)?.let { labels += Label(n.id, it, n.text) }
+                is GroupNode -> if (!n.locked) walk(n.children, m * n.transform)
+                is ImageNode -> {}
+            }
+        }
+    }
+    for (l in layers) if (l.visible && !l.locked) walk(l.children, Matrix.Identity)
+    if (labels.isEmpty()) return LabelSync(this, 0)
+
+    var doc = this
+    var changed = 0
+    for (label in labels) {
+        val h = label.box.height.coerceAtLeast(1e-6)
+        val cy = label.box.center.y
+        // Renk örneği: yazıyla aynı hizada, solunda ve yakınında duran, yazıya göre küçük, kareye yakın dolu şekil.
+        val swatch = swatches
+            .filter { s ->
+                val b = s.box
+                b.width > 0 && b.height > 0 && b.height <= h * 8 && b.width <= b.height * 3 && b.height <= b.width * 3 &&
+                    cy >= b.top && cy <= b.bottom && b.center.x < label.box.left &&
+                    label.box.left - b.right <= maxOf(b.width, h) * 2.5 && label.box.left - b.right >= -b.width * 0.5
+            }
+            .minByOrNull { label.box.left - it.box.right } ?: continue
+        if (only != null && swatch.color.rgbKey() != only) continue
+        val codes = swatch.color.codeLines()
+        val next = label.text.split('\n').joinToString("\n") { line ->
+            when {
+                line.trimStart().startsWith("RGB ") -> codes[1]
+                line.trimStart().startsWith("CMYK ") -> codes[2]
+                else -> HexToken.replace(line, codes[0])
+            }
+        }
+        if (next == label.text) continue
+        // Yazı değişti: dosyadan gelen harf biçimleri ve ölçülmüş genişlik artık geçerli değil.
+        doc = doc.updateNode(label.id) { (it as? TextNode)?.copy(text = next, name = if (it.name == it.text) next else it.name, outline = null, measuredWidth = null) ?: it }
+        changed++
+    }
+    return LabelSync(doc, changed)
+}
