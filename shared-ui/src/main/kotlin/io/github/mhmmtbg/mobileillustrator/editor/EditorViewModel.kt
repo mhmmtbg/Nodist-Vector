@@ -60,6 +60,8 @@ import io.github.mhmmtbg.mobileillustrator.model.LegendOptions
 import io.github.mhmmtbg.mobileillustrator.model.colorCodesText
 import io.github.mhmmtbg.mobileillustrator.model.withColorLegend
 import io.github.mhmmtbg.mobileillustrator.model.legendOptions
+import io.github.mhmmtbg.mobileillustrator.model.legendColors
+import io.github.mhmmtbg.mobileillustrator.model.designColors
 import io.github.mhmmtbg.mobileillustrator.model.syncedColorLabels
 import io.github.mhmmtbg.mobileillustrator.model.deleteAnchor
 import io.github.mhmmtbg.mobileillustrator.model.duplicate
@@ -1277,14 +1279,23 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
         // Önceki değişikliklerden eskimiş kalan kodlar da bu sırada düzelir.
         doc = doc.syncedColorLabels().document
         // Tasarımda renk lejantı varsa o da yeni renklerle yenilenir (yeri ve boyutu baştan kurulur).
-        present.legendOptions()?.let { options -> doc.withColorLegend(options)?.let { doc = it.document } }
+        // Lejantta yalnızca seçilmiş renkler varsa aynı seçim korunur (değişen rengin yerine yenisi geçer).
+        val newKey = to.toArgb() and 0xFFFFFF
+        val shown = present.legendColors()?.mapTo(HashSet()) { if (it == rgb) newKey else it }
+        present.legendOptions()?.let { options -> doc.withColorLegend(options, shown)?.let { doc = it.document } }
         commit(doc) { s ->
             s.copy(selection = s.selection.filterTo(HashSet()) { doc.findNode(it) != null }, message = tr("%s nesnenin rengi değişti", count))
         }
     }
 
     /** Tasarımdaki renklerin kodları (onaltılık, RGB, CMYK); paylaşmak için düz metin. */
-    fun colorCodesText(options: LegendOptions): String = present.colorCodesText(options)
+    fun colorCodesText(options: LegendOptions, only: Set<Int>? = null): String = present.colorCodesText(options, only)
+
+    /** Lejanta girebilecek renkler: tasarımda kullanılanlar, en çok kullanılandan aza. */
+    fun designColors(): List<Rgba> = present.designColors()
+
+    /** Belgedeki lejantta şu an gösterilen renkler; lejant yoksa `null`. */
+    fun legendColors(): Set<Int>? = present.legendColors()
 
     /** Tasarımdaki bütün renk kodu yazılarını yanlarındaki renk örneğine göre düzeltir. */
     fun syncColorLabels() {
@@ -1298,10 +1309,10 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
     }
 
     /** Tasarımda kullanılan renklerin lejantını çalışma yüzeyinin altına ekler (varsa eskisini yeniler). */
-    fun addColorLegend(options: LegendOptions) {
+    fun addColorLegend(options: LegendOptions, only: Set<Int>? = null) {
         if (state.pen != null) finishPen()
         onDragCancel()
-        val result = present.withColorLegend(options) ?: run {
+        val result = present.withColorLegend(options, only) ?: run {
             state = state.copy(message = tr("Belgede renkli nesne yok"))
             return
         }

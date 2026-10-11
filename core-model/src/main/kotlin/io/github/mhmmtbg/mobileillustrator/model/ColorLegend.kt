@@ -41,8 +41,22 @@ private fun Document.withoutLegend(): Document = copy(layers = layers.filter { i
 fun Document.designColors(): List<Rgba> = withoutLegend().colorGroups().map { it.color }
 
 /** Tasarımdaki renklerin kodları, paylaşmak için düz metin olarak (her renk bir satır). */
-fun Document.colorCodesText(options: LegendOptions = LegendOptions()): String =
-    designColors().joinToString("\n") { it.codeLines(options).joinToString("   ") }
+fun Document.colorCodesText(options: LegendOptions = LegendOptions(), only: Set<Int>? = null): String =
+    designColors().filter { only == null || it.rgbKey() in only }.joinToString("\n") { it.codeLines(options).joinToString("   ") }
+
+/** Belgedeki lejantın gösterdiği renkler (`0xRRGGBB`); lejant yoksa `null`. */
+fun Document.legendColors(): Set<Int>? {
+    val layer = layers.firstOrNull { it.name == LEGEND_LAYER } ?: return null
+    val out = LinkedHashSet<Int>()
+    fun walk(nodes: List<Node>) {
+        for (n in nodes) {
+            if (n is PathNode) (n.fill as? Paint.Solid)?.let { out += it.color.rgbKey() }
+            if (n is GroupNode) walk(n.children)
+        }
+    }
+    walk(layer.children)
+    return out
+}
 
 /** Köşeleri [r] yarıçapıyla yuvarlatılmış kare (saat yönünde, sekiz düğüm). */
 private fun roundedSquare(x: Double, y: Double, s: Double, r: Double): SubPath {
@@ -78,11 +92,12 @@ class LegendResult(val document: Document, val groupId: String, val colors: Int)
 /**
  * Tasarımda kullanılan renklerin lejantını ekler: her renk için köşeleri yuvarlak bir örnek kare ve yanında kodları.
  * Lejant ilk çalışma yüzeyinin alt kenarına, kendi katmanında tek bir grup olarak yerleşir (taşınıp ölçeklenebilir).
- * Önceden eklenmiş lejant varsa yenisiyle değiştirilir. Belgede renk yoksa `null` döner.
+ * Önceden eklenmiş lejant varsa yenisiyle değiştirilir; eskisi taşınmış ya da ölçeklenmişse yenisi de aynı yerde durur.
+ * [only] verilirse yalnızca o renkler (`0xRRGGBB`) lejanta girer. Eklenecek renk yoksa `null` döner.
  */
-fun Document.withColorLegend(options: LegendOptions = LegendOptions()): LegendResult? {
+fun Document.withColorLegend(options: LegendOptions = LegendOptions(), only: Set<Int>? = null): LegendResult? {
     val base = withoutLegend()
-    val colors = base.designColors().take(60)
+    val colors = base.designColors().filter { only == null || it.rgbKey() in only }.take(60)
     val lines = colors.map { it.codeLines(options) }
     val perItem = lines.firstOrNull()?.size ?: 0
     if (colors.isEmpty() || perItem == 0) return null
@@ -116,7 +131,9 @@ fun Document.withColorLegend(options: LegendOptions = LegendOptions()): LegendRe
             fill = Paint.Solid(Rgba.Black), transform = Matrix.translate(x + s + textGap, y + (s - block) / 2 + font * 0.72),
         )
     }
-    val group = GroupNode(name = LEGEND_LAYER, children = children)
+    // Kullanıcı eski lejantı taşıdıysa ya da ölçeklediyse yenisi de aynı dönüşümü alır.
+    val moved = (layers.firstOrNull { it.name == LEGEND_LAYER }?.children?.singleOrNull() as? GroupNode)?.transform ?: Matrix.Identity
+    val group = GroupNode(name = LEGEND_LAYER, children = children, transform = moved)
     val layer = Layer(name = LEGEND_LAYER, children = listOf(group))
     return LegendResult(base.copy(layers = base.layers + layer), group.id, colors.size)
 }

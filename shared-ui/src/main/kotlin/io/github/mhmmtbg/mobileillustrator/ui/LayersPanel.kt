@@ -135,9 +135,11 @@ fun LayersPanel(vm: EditorViewModel, host: PlatformHost, modifier: Modifier = Mo
 
     if (legend) {
         LegendDialog(
+            colors = remember(state.history.present) { vm.designColors() },
+            preselected = remember { vm.legendColors() },
             onDismiss = { legend = false },
-            onShare = { host.shareText(tr("%s renk kodları", trName(state.history.present.name)), vm.colorCodesText(it)) },
-            onAdd = { legend = false; vm.addColorLegend(it) },
+            onShare = { options, only -> host.shareText(tr("%s renk kodları", trName(state.history.present.name)), vm.colorCodesText(options, only)) },
+            onAdd = { options, only -> legend = false; vm.addColorLegend(options, only) },
             onSync = { legend = false; vm.syncColorLabels() },
         )
     }
@@ -149,12 +151,22 @@ fun LayersPanel(vm: EditorViewModel, host: PlatformHost, modifier: Modifier = Mo
 
 /** Renk lejantı: hangi kodların yazılacağı seçilir; lejant tasarıma eklenir ya da kodlar metin olarak paylaşılır. */
 @Composable
-private fun LegendDialog(onDismiss: () -> Unit, onShare: (LegendOptions) -> Unit, onAdd: (LegendOptions) -> Unit, onSync: () -> Unit) {
+private fun LegendDialog(
+    colors: List<io.github.mhmmtbg.mobileillustrator.model.Rgba>,
+    preselected: Set<Int>?,
+    onDismiss: () -> Unit,
+    onShare: (LegendOptions, Set<Int>) -> Unit,
+    onAdd: (LegendOptions, Set<Int>) -> Unit,
+    onSync: () -> Unit,
+) {
+    val keys = colors.map { it.toArgb() and 0xFFFFFF }
+    // Başta bütün renkler seçilidir; belgede lejant varsa onun gösterdiği renkler seçili gelir.
+    var picked by remember { mutableStateOf(preselected?.intersect(keys.toSet())?.takeIf { it.isNotEmpty() } ?: keys.toSet()) }
     var hex by remember { mutableStateOf(true) }
     var rgb by remember { mutableStateOf(true) }
     var cmyk by remember { mutableStateOf(true) }
     val options = LegendOptions(hex, rgb, cmyk)
-    val any = hex || rgb || cmyk
+    val any = (hex || rgb || cmyk) && picked.isNotEmpty()
     // İçerik kaydırılabilir ve yüksekliği ekrana göre sınırlıdır: kısa (yatay) ekranda alttaki seçenekler kaybolmaz.
     WithDialogSpace { maxContent ->
         androidx.compose.material3.AlertDialog(
@@ -177,7 +189,7 @@ private fun LegendDialog(onDismiss: () -> Unit, onShare: (LegendOptions) -> Unit
                     )
                     // Tasarımda elle yazılmış renk kodları varsa yanlarındaki renk örneğine göre düzeltilir.
                     action(tr("Tasarımdaki renk kodlarını güncelle"), onClick = onSync)
-                    action(tr("Kodları metin olarak paylaş"), enabled = any) { onShare(options) }
+                    action(tr("Kodları metin olarak paylaş"), enabled = any) { onShare(options, picked) }
                     Text(
                         tr("Tasarımda kullanılan renkler, seçtiğin kodlarıyla çalışma yüzeyinin altına eklenir."),
                         Modifier.padding(top = 10.dp), style = MaterialTheme.typography.bodySmall,
@@ -193,9 +205,30 @@ private fun LegendDialog(onDismiss: () -> Unit, onShare: (LegendOptions) -> Unit
                     check(tr("Renk kodu (#RRGGBB)"), hex) { hex = it }
                     check(tr("RGB değerleri"), rgb) { rgb = it }
                     check(tr("CMYK değerleri"), cmyk) { cmyk = it }
+                    // Lejanta girecek renkler: istenmeyenlerin işareti kaldırılır.
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(tr("Renkler: %s / %s", picked.size, keys.size), Modifier.weight(1f), style = MaterialTheme.typography.labelLarge)
+                        androidx.compose.material3.TextButton(onClick = { picked = if (picked.size == keys.size) emptySet() else keys.toSet() }) {
+                            Text(if (picked.size == keys.size) tr("Hiçbiri") else tr("Tümü"))
+                        }
+                    }
+                    for ((i, color) in colors.withIndex()) {
+                        val key = keys[i]
+                        val on = key in picked
+                        val code = "#%06X".format(key)
+                        Row(
+                            Modifier.fillMaxWidth().clickable(role = Role.Checkbox) { picked = if (on) picked - key else picked + key }
+                                .semantics(mergeDescendants = true) { contentDescription = tr("%s rengi", code); selected = on },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            androidx.compose.material3.Checkbox(on, null, Modifier.padding(vertical = 8.dp, horizontal = 4.dp))
+                            ColorDot(color, Modifier.size(22.dp))
+                            Text(code, Modifier.padding(start = 10.dp))
+                        }
+                    }
                 }
             },
-            confirmButton = { androidx.compose.material3.TextButton(onClick = { onAdd(options) }, enabled = any) { Text(tr("Tasarıma ekle")) } },
+            confirmButton = { androidx.compose.material3.TextButton(onClick = { onAdd(options, picked) }, enabled = any) { Text(tr("Tasarıma ekle")) } },
             dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text(tr("Vazgeç")) } },
         )
     }

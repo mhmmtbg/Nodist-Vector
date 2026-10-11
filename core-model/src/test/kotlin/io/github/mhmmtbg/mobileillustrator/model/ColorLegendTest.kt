@@ -107,4 +107,22 @@ class ColorLegendTest {
         // Uygulamanın eklediği lejantın etiketleri zaten doğrudur.
         assertEquals(0, doc(Rgba.rgb(0x6B6A42), Rgba.rgb(0xD8CBA0)).withColorLegend()!!.document.syncedColorLabels().changed)
     }
+
+    @Test
+    fun onlyTheChosenColoursEnterTheLegendAndAMovedLegendStaysInPlace() {
+        val d = doc(Rgba.rgb(0x6B6A42), Rgba.rgb(0xD8CBA0), Rgba.rgb(0x2A2B18))
+        val r = assertNotNull(d.withColorLegend(LegendOptions(rgb = false, cmyk = false), only = setOf(0x6B6A42, 0x2A2B18)))
+        assertEquals(2, r.colors)
+        assertEquals(setOf(0x6B6A42, 0x2A2B18), r.document.legendColors())
+        assertEquals(2, d.colorCodesText(only = setOf(0xD8CBA0, 0x2A2B18)).lines().size)
+        assertNull(d.withColorLegend(only = setOf(0x123456)))
+        assertNull(d.legendColors())
+        // Lejant taşındıktan sonra yenilenirse aynı yerde kalır.
+        val moved = r.document.transformNodes(setOf(r.groupId), Matrix.translate(300.0, -400.0))
+        val before = assertNotNull(moved.boundsOf(r.groupId))
+        val again = assertNotNull(moved.withColorLegend(LegendOptions(rgb = false, cmyk = false), only = moved.legendColors()))
+        val after = assertNotNull(again.document.boundsOf(again.groupId))
+        assertEquals(before.left, after.left, 1e-6)
+        assertEquals(before.top, after.top, 1e-6)
+    }
 }
