@@ -228,22 +228,23 @@ try_export() {
   if [ -n "$f" ]; then adb pull "$f" "$OUT/disa-aktarim.$2" > /dev/null || true; else echo "::warning title=Duman testi::Kaydedilen dosya bulunamadı ($2)"; fi
   alive "dışa aktarma $2"
 }
-try_export "Farklı kaydet (.ai)" ai
+try_export "Farklı kaydet (.nodea)" nodea
 # Farklı kaydet'ten sonra "Kaydet" sormadan aynı dosyanın üzerine yazmalı.
-if [ -f "$OUT/disa-aktarim.ai" ]; then
-  before=$(stat -c %s "$OUT/disa-aktarim.ai")
+if [ -f "$OUT/disa-aktarim.nodea" ]; then
+  before=$(stat -c %s "$OUT/disa-aktarim.nodea")
   tap "Elips"
   adb shell input swipe $((W * 40 / 100)) $((H * 14 / 100)) $((W * 55 / 100)) $((H * 19 / 100)) 400
   tap "Dosya menüsü"
   tap "Kaydet"
   sleep 4
   wait_for "Dosya menüsü"
-  f=$(adb shell "find /sdcard/Download /sdcard/Documents -name 'Gopher*.ai' 2>/dev/null" | tr -d '\r' | head -n 1)
-  adb pull "$f" "$OUT/disa-aktarim.ai" > /dev/null
-  after=$(stat -c %s "$OUT/disa-aktarim.ai")
+  f=$(adb shell "find /sdcard/Download /sdcard/Documents -name 'Gopher*.nodea' 2>/dev/null" | tr -d '\r' | head -n 1)
+  adb pull "$f" "$OUT/disa-aktarim.nodea" > /dev/null
+  after=$(stat -c %s "$OUT/disa-aktarim.nodea")
   [ "$before" != "$after" ] || fail "Kaydet bağlı dosyayı güncellemedi (boyut aynı: $before)"
   tap "Seçim"
 fi
+try_export "AI dışa aktar" ai
 try_export "PDF dışa aktar" pdf
 try_export "SVG dışa aktar" svg
 try_export "PNG dışa aktar" png

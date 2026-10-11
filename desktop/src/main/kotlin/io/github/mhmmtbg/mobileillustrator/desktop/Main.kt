@@ -54,7 +54,7 @@ fun main(args: Array<String>) {
             EditorViewModel(io, scope).also { vm -> args.firstOrNull()?.takeIf { File(it).isFile }?.let(vm::open) }
         }
         fun save() {
-            if (vm.canSaveInPlace) vm.save() else host.pickSaveLocation(vm.suggestedFileName(ExportFormat.Ai), vm::saveAs)
+            if (vm.canSaveInPlace) vm.save() else host.pickSaveLocation(vm.suggestedFileName(ExportFormat.Nodea), vm::saveAs)
         }
         Window(
             onCloseRequest = {

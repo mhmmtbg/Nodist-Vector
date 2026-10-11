@@ -50,7 +50,7 @@ class DesktopHost(private val root: File, private val window: () -> Frame?) : Pl
     }
 
     override fun pickDocument(onPicked: (String) -> Unit) {
-        choose(tr("Aç… (.ai, .pdf, .svg)"), save = false, extensions = listOf("ai", "pdf", "svg"))?.let(onPicked)
+        choose(tr("Aç… (.nodea, .ai, .pdf, .svg)"), save = false, extensions = listOf("nodea", "ai", "pdf", "svg"))?.let(onPicked)
     }
 
     override fun pickFont(onPicked: (String) -> Unit) {

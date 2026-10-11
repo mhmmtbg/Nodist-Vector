@@ -32,8 +32,13 @@ yüklenir ve PNG olarak dışa aktarılır. Ekran görüntüleri aynı Release s
   belgeyi silmez; son hali Belgelerim'de durur.
 - Dışarıdan ekle: bir `.ai`, `.pdf` ya da `.svg` dosyasının katmanları açık belgeye, çalışma yüzeyinin ortasına eklenir.
 - Kopyala / kes / yapıştır belgeler arasında da çalışır: bir sekmede kopyalanan nesne ya da katman öbür sekmeye yapıştırılır.
-- Aç: `.ai` (Illustrator 9 ve sonrası, PDF uyumlu), `.pdf`, `.svg`. Dosya yöneticisinden "birlikte aç" da çalışır.
-- Kaydet açtığın dosyanın üzerine yazar; Farklı kaydet yeni bir `.ai` oluşturur. PDF, SVG ve PNG (saydam zemin) dışa aktarılır.
+- Aç: `.nodea`, `.ai` (Illustrator 9 ve sonrası, PDF uyumlu), `.pdf`, `.svg`. Dosya yöneticisinden "birlikte aç" da çalışır.
+- Kaydet uygulamanın kendi biçiminde (`.nodea`) yazar: katmanlar, gruplar, düzenlenebilir metin, kilit ve görünürlük
+  kayıpsız saklanır. Belge bir `.nodea` dosyasına bağlıysa üzerine, değilse yeni bir dosyaya kaydedilir.
+  `.nodea` içeriği PDF tabanlıdır; bir PDF görüntüleyicide de önizlenebilir.
+- Dışa aktarma: `.ai`, PDF, SVG ve PNG (saydam zemin).
+- Katman dışa aktarma: katmanın menüsündeki "Dışa aktar" yalnızca o katmanı (çoklu seçimde işaretli katmanların
+  tümünü) içindeki gruplar ve sırayla birlikte `.nodea`, `.ai`, PDF, SVG ya da PNG olarak yazar.
 - Otomatik kayıt: uygulama kapansa da çalışma yerinde kalır. Çökme olursa bir sonraki açılışta rapor paylaşma seçeneği çıkar; rapor kendiliğinden gönderilmez.
 
 **Katmanlar**

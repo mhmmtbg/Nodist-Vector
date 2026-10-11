@@ -41,6 +41,11 @@ enum class DashStyle(val pattern: List<Double>) {
 enum class PaintTarget { Fill, Stroke, Opacity }
 
 enum class ExportFormat(val extension: String, val mimeType: String) {
+    /**
+     * Uygulamanın kendi dosya biçimi (.nodea): katmanlar, gruplar, düzenlenebilir metin, kilit ve görünürlük gibi her şey
+     * kayıpsız saklanır. İçeriği PDF tabanlıdır; bu sayede dosya bir PDF görüntüleyicide de önizlenebilir.
+     */
+    Nodea("nodea", "application/octet-stream"),
     Ai("ai", "application/octet-stream"),
     Pdf("pdf", "application/pdf"),
     Svg("svg", "image/svg+xml"),

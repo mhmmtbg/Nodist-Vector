@@ -94,7 +94,14 @@ abstract class DocumentIo(root: File) {
             return if (looksSvg) {
                 Opened(SvgImporter.import(bytes, base), ExportFormat.Svg)
             } else {
-                Opened(AiImporter.import(bytes, base), if (fileName.endsWith(".pdf", ignoreCase = true)) ExportFormat.Pdf else ExportFormat.Ai)
+                Opened(
+                    AiImporter.import(bytes, base),
+                    when {
+                        fileName.endsWith(".nodea", ignoreCase = true) -> ExportFormat.Nodea
+                        fileName.endsWith(".pdf", ignoreCase = true) -> ExportFormat.Pdf
+                        else -> ExportFormat.Ai
+                    },
+                )
             }
         } catch (e: ImportException) {
             throw IOException(e.message)
@@ -106,7 +113,7 @@ abstract class DocumentIo(root: File) {
     }
 
     fun encode(doc: Document, format: ExportFormat): ByteArray = when (format) {
-        ExportFormat.Ai, ExportFormat.Pdf -> AiExporter.export(doc, exportOptions)
+        ExportFormat.Nodea, ExportFormat.Ai, ExportFormat.Pdf -> AiExporter.export(doc, exportOptions)
         ExportFormat.Svg -> SvgExporter.export(doc, outlineText = { TextOutliner.outline(it) }).toByteArray(Charsets.UTF_8)
         ExportFormat.Png -> renderPng(doc, 4096, transparent = true)
     }

@@ -43,6 +43,7 @@ import io.github.mhmmtbg.mobileillustrator.editor.EditorViewModel
 import io.github.mhmmtbg.mobileillustrator.model.GroupNode
 import io.github.mhmmtbg.mobileillustrator.model.colorGroups
 import io.github.mhmmtbg.mobileillustrator.model.LegendOptions
+import io.github.mhmmtbg.mobileillustrator.editor.ExportFormat
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
@@ -73,6 +74,7 @@ fun LayersPanel(vm: EditorViewModel, host: PlatformHost, modifier: Modifier = Mo
     val doc = state.document
     var renaming by remember { mutableStateOf<String?>(null) }
     var legend by remember { mutableStateOf(false) }
+    var exporting by remember { mutableStateOf<List<String>?>(null) }
 
     val rows = ArrayList<PanelRow>()
     fun addNodes(nodes: List<Node>, depth: Int) {
@@ -126,13 +128,51 @@ fun LayersPanel(vm: EditorViewModel, host: PlatformHost, modifier: Modifier = Mo
         } else LazyColumn(Modifier.fillMaxWidth().weight(1f), state = listState) {
             items(rows, key = { it.key }) { row ->
                 when (row) {
-                    is PanelRow.OfLayer -> LayerRow(vm, row, onRename = { renaming = row.layer.id })
+                    is PanelRow.OfLayer -> LayerRow(vm, row, onRename = { renaming = row.layer.id }, onExport = { exporting = it })
                     is PanelRow.OfNode -> NodeRow(vm, row)
                 }
             }
         }
     }
 
+    exporting?.let { ids ->
+        // Biçim seçilir, sonra kaydedilecek yer sorulur.
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { exporting = null },
+            title = { Text(if (ids.size == 1) tr("Katmanı dışa aktar") else tr("%s katmanı dışa aktar", ids.size)) },
+            text = {
+                Column {
+                    Text(tr("Yalnızca seçilen katmanlar yazılır; içlerindeki gruplar ve sıra korunur."), style = MaterialTheme.typography.bodySmall)
+                    val formats = listOf(
+                        ExportFormat.Nodea to tr("Nodea (.nodea) — yeniden düzenlemek için"),
+                        ExportFormat.Ai to "Illustrator (.ai)",
+                        ExportFormat.Pdf to "PDF (.pdf)",
+                        ExportFormat.Svg to "SVG (.svg)",
+                        ExportFormat.Png to "PNG (.png)",
+                    )
+                    for ((format, label) in formats) {
+                        Text(
+                            label,
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 6.dp)
+                                .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                                .background(AppColors.PanelRaised)
+                                .clickable(role = Role.Button) {
+                                    exporting = null
+                                    host.pickSaveLocation(vm.suggestedLayerFileName(ids, format)) { vm.exportLayers(it, format, ids) }
+                                }
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            color = AppColors.OnPanel,
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { exporting = null }) { Text(tr("Vazgeç")) } },
+        )
+    }
     if (legend) {
         LegendDialog(
             colors = remember(state.history.present) { vm.designColors() },
@@ -313,7 +353,7 @@ private fun SmallToggle(icon: ImageVector, label: String, on: Boolean, onClick: 
 }
 
 @Composable
-private fun LayerRow(vm: EditorViewModel, row: PanelRow.OfLayer, onRename: () -> Unit) {
+private fun LayerRow(vm: EditorViewModel, row: PanelRow.OfLayer, onRename: () -> Unit, onExport: (List<String>) -> Unit) {
     val state = vm.state
     val layer = row.layer
     val active = state.activeLayerId == layer.id
@@ -370,6 +410,8 @@ private fun LayerRow(vm: EditorViewModel, row: PanelRow.OfLayer, onRename: () ->
                 item(tr("Öne taşı"), enabled = row.index < row.count - 1) { vm.moveLayer(layer.id, up = true) }
                 item(tr("Arkaya taşı"), enabled = row.index > 0) { vm.moveLayer(layer.id, up = false) }
                 item(tr("Seçimi bu katmana taşı"), enabled = state.selection.isNotEmpty()) { vm.moveSelectionToLayer(layer.id) }
+                // Çoklu seçimde işaretli katmanlardan biriyse işaretlilerin tümü, değilse yalnızca bu katman dışa aktarılır.
+                item(tr("Dışa aktar…"), enabled = layer.children.isNotEmpty() || layer.id in state.layerSelection) { onExport(vm.layersToExport(layer.id)) }
                 item(tr("Katmanı sil"), enabled = row.count > 1) { vm.deleteLayer(layer.id) }
             }
         }

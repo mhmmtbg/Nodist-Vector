@@ -48,6 +48,8 @@
                 <data android:scheme="file" />
                 <data android:host="*" />
                 <data android:mimeType="application/octet-stream" />
+                <data android:pathPattern=".*\\.nodea" />
+                <data android:pathPattern=".*\\..*\\.nodea" />
                 <data android:pathPattern=".*\\.ai" />
                 <data android:pathPattern=".*\\.AI" />
                 <data android:pathPattern=".*\\..*\\.ai" />

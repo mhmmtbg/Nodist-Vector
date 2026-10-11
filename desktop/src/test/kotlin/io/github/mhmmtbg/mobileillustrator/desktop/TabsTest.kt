@@ -12,6 +12,8 @@ import io.github.mhmmtbg.mobileillustrator.model.colorGroups
 import io.github.mhmmtbg.mobileillustrator.model.findNode
 import io.github.mhmmtbg.mobileillustrator.model.boundsEach
 import io.github.mhmmtbg.mobileillustrator.editor.TextPrompt
+import io.github.mhmmtbg.mobileillustrator.editor.ExportFormat
+import io.github.mhmmtbg.mobileillustrator.ai.AiImporter
 import io.github.mhmmtbg.mobileillustrator.render.TextOutliner
 import io.github.mhmmtbg.mobileillustrator.render.DocumentRenderer
 import kotlinx.coroutines.CoroutineScope
@@ -268,5 +270,61 @@ class TabsTest {
         val top = vm.state.document.colorGroups().first()
         s.ui { vm.selectColor(top.rgb) }
         assertEquals(top.nodeIds.size, vm.state.document.boundsEach(vm.state.selection).size)
+    }
+
+    @Test
+    fun saveWritesTheAppsOwnFormatAndLayersExportOnTheirOwn() {
+        val s = start()
+        val vm = s.vm
+        s.ui { vm.openSample() }
+        s.idle()
+        // Yeni ya da başka biçimden açılmış belgede "Kaydet" önce .nodea dosyası sorar.
+        assertEquals(false, vm.canSaveInPlace)
+        assertEquals("Gopher.nodea", vm.suggestedFileName(ExportFormat.Nodea))
+        val dir = newRoot()
+        val saved = File(dir, "Gopher.nodea")
+        s.ui { vm.saveAs(saved.path) }
+        s.idle()
+        assertTrue(saved.length() > 1000)
+        assertTrue(vm.canSaveInPlace)
+        assertEquals(ExportFormat.Nodea, vm.state.session.linkFormat)
+
+        // .nodea dosyası katmanları, kilit ve görünürlükleriyle geri açılır ve doğrudan üzerine kaydedilebilir.
+        val before = vm.state.document
+        val palette = before.layers.first { it.name == "Pallette" }
+        s.ui { vm.toggleLayerLocked(palette.id); vm.save() }
+        s.idle()
+        s.ui { vm.closeTab(vm.state.session.id); vm.open(saved.path) }
+        s.idle()
+        val back = vm.state.document
+        assertEquals(before.layers.map { it.name }, back.layers.map { it.name })
+        assertEquals(before.layers.map { it.children.size }, back.layers.map { it.children.size })
+        assertTrue(back.layers.first { it.name == "Pallette" }.locked)
+        assertTrue(vm.canSaveInPlace)
+
+        // Katman panelinden dışa aktarma: yalnızca o katman; çoklu seçimde işaretli katmanların tümü.
+        val gopher = back.layers.first { it.name == "Gopher" }
+        val license = back.layers.first { it.name == "License" }
+        assertEquals(listOf(gopher.id), vm.layersToExport(gopher.id))
+        assertEquals("Gopher - License.svg", vm.suggestedLayerFileName(listOf(license.id), ExportFormat.Svg))
+        val one = File(dir, "tek.ai")
+        s.ui { vm.exportLayers(one.path, ExportFormat.Ai, vm.layersToExport(gopher.id)) }
+        s.idle()
+        val single = AiImporter.import(one.readBytes(), "tek").document
+        assertEquals(listOf("Gopher"), single.layers.map { it.name })
+        assertEquals(gopher.children.size, single.layers.single().children.size)
+        assertEquals(back.artboards.map { it.bounds }, single.artboards.map { it.bounds })
+        s.ui { vm.toggleMultiSelect(); vm.toggleLayerSelected(gopher.id); vm.toggleLayerSelected(license.id) }
+        assertEquals(setOf(gopher.id, license.id), vm.layersToExport(license.id).toSet())
+        // İşaretli olmayan bir katmanın menüsünden yalnızca o katman çıkar.
+        assertEquals(listOf(back.layers.first { it.name == "Pallette" }.id), vm.layersToExport(back.layers.first { it.name == "Pallette" }.id))
+        val two = File(dir, "iki.nodea")
+        s.ui { vm.exportLayers(two.path, ExportFormat.Nodea, vm.layersToExport(license.id)) }
+        s.idle()
+        // Katmanlar belgedeki sıralarıyla yazılır.
+        assertEquals(back.layers.map { it.name }.filter { it != "Pallette" }, AiImporter.import(two.readBytes(), "iki").document.layers.map { it.name })
+        // Dışa aktarmak açık belgeyi ve bağlı dosyasını değiştirmez.
+        assertEquals(3, vm.state.document.layers.size)
+        assertEquals(saved.path, vm.state.session.linkUri)
     }
 }

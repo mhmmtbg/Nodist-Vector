@@ -111,7 +111,7 @@ fun EditorScreen(vm: EditorViewModel, host: PlatformHost) {
 
     fun openFile() = host.pickDocument(vm::open)
     fun export(format: ExportFormat) = host.pickSaveLocation(vm.suggestedFileName(format)) { vm.export(it, format) }
-    fun saveAs() = host.pickSaveLocation(vm.suggestedFileName(ExportFormat.Ai), vm::saveAs)
+    fun saveAs() = host.pickSaveLocation(vm.suggestedFileName(ExportFormat.Nodea), vm::saveAs)
     // Başka programın dosyası açıksa üzerine yazılmaz; ilk kayıtta yeni dosya adı sorulur.
     fun save() = if (vm.canSaveInPlace) vm.save() else saveAs()
     var renamingDocument by remember { mutableStateOf(false) }
@@ -306,16 +306,17 @@ private fun TopBar(
                     DropdownMenuItem(text = { Text(label) }, onClick = { menu = false; action() })
                 item(tr("Belgelerim")) { vm.showGallery() }
                 item(tr("Yeni belge…"), onNew)
-                item(tr("Aç… (.ai, .pdf, .svg)"), onOpen)
+                item(tr("Aç… (.nodea, .ai, .pdf, .svg)"), onOpen)
                 item(tr("Örnek dosyayı aç")) { vm.openSample() }
                 HorizontalDivider()
                 item(tr("Kaydet"), onSave)
-                item(tr("Farklı kaydet (.ai)"), onSaveAs)
+                item(tr("Farklı kaydet (.nodea)"), onSaveAs)
+                item(tr("AI dışa aktar")) { onExport(ExportFormat.Ai) }
                 item(tr("PDF dışa aktar")) { onExport(ExportFormat.Pdf) }
                 item(tr("SVG dışa aktar")) { onExport(ExportFormat.Svg) }
                 item(tr("PNG dışa aktar")) { onExport(ExportFormat.Png) }
                 HorizontalDivider()
-                item(tr("Dışarıdan ekle… (.ai, .pdf, .svg)"), onImport)
+                item(tr("Dışarıdan ekle… (.nodea, .ai, .pdf, .svg)"), onImport)
                 item(tr("Görsel yerleştir…"), onPlaceImage)
                 if (vm.canPaste) item(tr("Yapıştır")) { vm.paste() }
                 item(tr("Belgeyi adlandır…"), onRename)

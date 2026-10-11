@@ -1536,7 +1536,12 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
         present.name.replace(Regex("[\\\\/:*?\"<>|]"), "_").ifBlank { "Adsiz" } + "." + format.extension
 
     /** Bağlı dosyanın üzerine sorulmadan yazılabilir mi? Değilse arayüz "Farklı kaydet" penceresini açar. */
-    val canSaveInPlace: Boolean get() = state.session.linkUri != null && state.session.linkWritable
+    /**
+     * "Kaydet" her zaman uygulamanın kendi biçiminde (.nodea) yazar: belge bir .nodea dosyasına bağlıysa onun üzerine,
+     * değilse (yeni belge ya da .ai/.pdf/.svg olarak açılmış dosya) yeni bir .nodea dosyasına.
+     */
+    val canSaveInPlace: Boolean
+        get() = state.session.linkUri != null && state.session.linkWritable && state.session.linkFormat == ExportFormat.Nodea
 
     fun renameDocument(name: String) {
         val clean = name.trim().ifEmpty { return }
@@ -1776,11 +1781,11 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
         val doc = present
         val tab = state.session.id
         background(tr("Kaydediliyor…")) {
-            io.export(doc, uri, ExportFormat.Ai)
+            io.export(doc, uri, ExportFormat.Nodea)
             io.persistAccess(uri)
             withContext(Dispatchers.Main) {
                 editTab(tab) {
-                    it.copy(session = it.session.copy(linkUri = uri, linkFormat = ExportFormat.Ai, linkWritable = true, unsaved = it.history.present !== doc))
+                    it.copy(session = it.session.copy(linkUri = uri, linkFormat = ExportFormat.Nodea, linkWritable = true, unsaved = it.history.present !== doc))
                 }
                 state = state.copy(message = tr("Kaydedildi"))
             }
@@ -1796,6 +1801,39 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
         background(tr("Dışa aktarılıyor…")) {
             io.export(doc, uri, format)
             withContext(Dispatchers.Main) { state = state.copy(message = tr("Dışa aktarıldı")) }
+        }
+    }
+
+    /**
+     * Katman panelinden dışa aktarma: [layerId] katmanı çoklu seçimde işaretli katmanlardan biriyse işaretli katmanların
+     * tümü, değilse yalnızca o katman dışa aktarılır.
+     */
+    fun layersToExport(layerId: String): List<String> {
+        val picked = state.layerSelection
+        val ids = if (layerId in picked) picked else setOf(layerId)
+        return present.layers.filter { it.id in ids }.map { it.id }
+    }
+
+    /** Katman dışa aktarımı için önerilen dosya adı: belge adı ve (tek katmansa) katmanın adı. */
+    fun suggestedLayerFileName(layerIds: List<String>, format: ExportFormat): String {
+        val single = layerIds.singleOrNull()?.let { present.findLayer(it)?.name }
+        val base = present.name + " - " + (single ?: tr("%s katman", layerIds.size))
+        return base.replace(Regex("[\\\\/:*?\"<>|]"), "_").ifBlank { "Adsiz" } + "." + format.extension
+    }
+
+    /**
+     * Yalnızca verilen katmanları dosyaya yazar. Katmanların içindeki gruplar, kırpma grupları ve nesne sırası aynen
+     * korunur; çalışma yüzeyi belgedekiyle aynıdır. Gizli katman da dışa aktarılan dosyada görünür olur.
+     */
+    fun exportLayers(uri: String, format: ExportFormat, layerIds: List<String>) {
+        if (state.pen != null) finishPen()
+        val ids = layerIds.toSet()
+        val layers = present.layers.filter { it.id in ids }.map { if (it.visible) it else it.copy(visible = true) }
+        if (layers.isEmpty()) return
+        val doc = present.copy(name = layers.singleOrNull()?.name ?: present.name, layers = layers)
+        background(tr("Dışa aktarılıyor…")) {
+            io.export(doc, uri, format)
+            withContext(Dispatchers.Main) { state = state.copy(message = tr("%s katman dışa aktarıldı", layers.size)) }
         }
     }
 
