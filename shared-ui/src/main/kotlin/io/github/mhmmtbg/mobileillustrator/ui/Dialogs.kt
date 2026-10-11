@@ -365,12 +365,13 @@ fun TextDialog(
  */
 @Composable
 internal fun WithDialogSpace(content: @Composable (maxContent: androidx.compose.ui.unit.Dp) -> Unit) {
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val insets = WindowInsets.safeDrawing
-        val density = LocalDensity.current
-        val taken = with(density) { (insets.getTop(density) + insets.getBottom(density)).toDp() }
-        content((maxHeight - taken - 260.dp).coerceIn(220.dp, 720.dp))
-    }
+    // Pencerenin boyutu doğrudan sorulur; yerleşime bir öğe eklenmez (çağrıldığı panelin düzeni bozulmasın).
+    val window = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize
+    val insets = WindowInsets.safeDrawing
+    val density = LocalDensity.current
+    val free = with(density) { (window.height - insets.getTop(density) - insets.getBottom(density)).toDp() }
+    // Boyut bilinmiyorsa (sıfır gelirse) güvenli bir varsayılan kullanılır.
+    content(if (window.height <= 0) 360.dp else (free - 260.dp).coerceIn(220.dp, 720.dp))
 }
 
 /**
