@@ -44,6 +44,9 @@ import io.github.mhmmtbg.mobileillustrator.model.GroupNode
 import io.github.mhmmtbg.mobileillustrator.model.colorGroups
 import io.github.mhmmtbg.mobileillustrator.model.LegendOptions
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
 import io.github.mhmmtbg.mobileillustrator.model.ImageNode
 import io.github.mhmmtbg.mobileillustrator.model.Layer
@@ -152,31 +155,50 @@ private fun LegendDialog(onDismiss: () -> Unit, onShare: (LegendOptions) -> Unit
     var cmyk by remember { mutableStateOf(true) }
     val options = LegendOptions(hex, rgb, cmyk)
     val any = hex || rgb || cmyk
-    androidx.compose.material3.AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(tr("Renk lejantı")) },
-        text = {
-            Column {
-                Text(tr("Tasarımda kullanılan renkler, seçtiğin kodlarıyla çalışma yüzeyinin altına eklenir."), style = MaterialTheme.typography.bodySmall)
-                @Composable
-                fun check(label: String, on: Boolean, set: (Boolean) -> Unit) = Row(
-                    Modifier.fillMaxWidth().clickable(role = Role.Checkbox) { set(!on) }.semantics { selected = on },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    androidx.compose.material3.Checkbox(on, null, Modifier.padding(vertical = 10.dp, horizontal = 4.dp))
-                    Text(label)
+    // İçerik kaydırılabilir ve yüksekliği ekrana göre sınırlıdır: kısa (yatay) ekranda alttaki seçenekler kaybolmaz.
+    WithDialogSpace { maxContent ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(tr("Renk lejantı")) },
+            text = {
+                Column(Modifier.heightIn(max = maxContent).verticalScroll(rememberScrollState())) {
+                    @Composable
+                    fun action(label: String, enabled: Boolean = true, onClick: () -> Unit) = Text(
+                        label,
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 3.dp)
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                            .background(AppColors.PanelRaised)
+                            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        color = if (enabled) AppColors.Accent else AppColors.OnPanelMuted,
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                    // Tasarımda elle yazılmış renk kodları varsa yanlarındaki renk örneğine göre düzeltilir.
+                    action(tr("Tasarımdaki renk kodlarını güncelle"), onClick = onSync)
+                    action(tr("Kodları metin olarak paylaş"), enabled = any) { onShare(options) }
+                    Text(
+                        tr("Tasarımda kullanılan renkler, seçtiğin kodlarıyla çalışma yüzeyinin altına eklenir."),
+                        Modifier.padding(top = 10.dp), style = MaterialTheme.typography.bodySmall,
+                    )
+                    @Composable
+                    fun check(label: String, on: Boolean, set: (Boolean) -> Unit) = Row(
+                        Modifier.fillMaxWidth().clickable(role = Role.Checkbox) { set(!on) }.semantics { selected = on },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        androidx.compose.material3.Checkbox(on, null, Modifier.padding(vertical = 8.dp, horizontal = 4.dp))
+                        Text(label)
+                    }
+                    check(tr("Renk kodu (#RRGGBB)"), hex) { hex = it }
+                    check(tr("RGB değerleri"), rgb) { rgb = it }
+                    check(tr("CMYK değerleri"), cmyk) { cmyk = it }
                 }
-                check(tr("Renk kodu (#RRGGBB)"), hex) { hex = it }
-                check(tr("RGB değerleri"), rgb) { rgb = it }
-                check(tr("CMYK değerleri"), cmyk) { cmyk = it }
-                androidx.compose.material3.TextButton(onClick = { onShare(options) }, enabled = any) { Text(tr("Kodları metin olarak paylaş")) }
-                // Tasarımda elle yazılmış renk kodları varsa yanlarındaki renk örneğine göre düzeltilir.
-                androidx.compose.material3.TextButton(onClick = onSync) { Text(tr("Tasarımdaki renk kodlarını güncelle")) }
-            }
-        },
-        confirmButton = { androidx.compose.material3.TextButton(onClick = { onAdd(options) }, enabled = any) { Text(tr("Tasarıma ekle")) } },
-        dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text(tr("Vazgeç")) } },
-    )
+            },
+            confirmButton = { androidx.compose.material3.TextButton(onClick = { onAdd(options) }, enabled = any) { Text(tr("Tasarıma ekle")) } },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text(tr("Vazgeç")) } },
+        )
+    }
 }
 
 /** Panel başlığındaki düğme; dar panelde de sığsın diye üst çubuktakilerden biraz küçüktür. */

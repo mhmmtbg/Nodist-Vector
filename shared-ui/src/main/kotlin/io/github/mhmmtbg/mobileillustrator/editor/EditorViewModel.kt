@@ -848,7 +848,8 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
                 }
             }
         }
-        commit(doc)
+        // Boyanan şekil bir lejantın renk örneğiyse yanındaki renk kodu yazısı da yeni renge çevrilir.
+        commit(if (target == PaintTarget.Fill && color != null) doc.syncedColorLabels(only = color.toArgb() and 0xFFFFFF).document else doc)
     }
 
     /** Kaydırıcı sürüklenirken [done] `false` gelir; bırakılınca tek bir geçmiş kaydı yazılır. */
@@ -1273,7 +1274,8 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
         onDragCancel()
         var doc = present.recolored(rgb, to)
         // Tasarımın kendi lejantı varsa (renk örneği + "#RRGGBB" yazısı) yazıdaki kod da yeni renge çevrilir.
-        doc = doc.syncedColorLabels(only = to.toArgb() and 0xFFFFFF).document
+        // Önceki değişikliklerden eskimiş kalan kodlar da bu sırada düzelir.
+        doc = doc.syncedColorLabels().document
         // Tasarımda renk lejantı varsa o da yeni renklerle yenilenir (yeri ve boyutu baştan kurulur).
         present.legendOptions()?.let { options -> doc.withColorLegend(options)?.let { doc = it.document } }
         commit(doc) { s ->

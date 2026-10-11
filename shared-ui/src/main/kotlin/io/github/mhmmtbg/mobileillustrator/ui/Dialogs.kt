@@ -364,7 +364,7 @@ fun TextDialog(
  * başlık ve düğmelerin payı düşülür. Böylece büyük ekranda içerik kaydırmadan sığar, klavye açıkken düğmeler görünür kalır.
  */
 @Composable
-private fun WithDialogSpace(content: @Composable (maxContent: androidx.compose.ui.unit.Dp) -> Unit) {
+internal fun WithDialogSpace(content: @Composable (maxContent: androidx.compose.ui.unit.Dp) -> Unit) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val insets = WindowInsets.safeDrawing
         val density = LocalDensity.current
