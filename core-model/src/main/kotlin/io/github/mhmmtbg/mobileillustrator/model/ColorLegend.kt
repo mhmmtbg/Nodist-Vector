@@ -132,8 +132,17 @@ fun Document.withColorLegend(options: LegendOptions = LegendOptions(), only: Set
         )
     }
     // Kullanıcı eski lejantı taşıdıysa ya da ölçeklediyse yenisi de aynı dönüşümü alır.
-    val moved = (layers.firstOrNull { it.name == LEGEND_LAYER }?.children?.singleOrNull() as? GroupNode)?.transform ?: Matrix.Identity
-    val group = GroupNode(name = LEGEND_LAYER, children = children, transform = moved)
+    val old = layers.firstOrNull { it.name == LEGEND_LAYER }
+    val oldGroup = old?.children?.singleOrNull() as? GroupNode
+    var group = GroupNode(name = LEGEND_LAYER, children = children, transform = oldGroup?.transform ?: Matrix.Identity)
+    if (old != null) {
+        // Yeni lejant eskisinin sol üst köşesine oturtulur: grup çözülmüş ya da parçaları tek tek taşınmış olsa da yerinde kalır.
+        val was = old.children.mapNotNull { it.bounds() }.reduceOrNull(Rect::union)
+        val now = group.bounds()
+        if (was != null && now != null && (was.left != now.left || was.top != now.top)) {
+            group = group.copy(transform = Matrix.translate(was.left - now.left, was.top - now.top) * group.transform)
+        }
+    }
     val layer = Layer(name = LEGEND_LAYER, children = listOf(group))
     return LegendResult(base.copy(layers = base.layers + layer), group.id, colors.size)
 }

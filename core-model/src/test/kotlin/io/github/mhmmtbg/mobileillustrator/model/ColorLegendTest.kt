@@ -124,5 +124,12 @@ class ColorLegendTest {
         val after = assertNotNull(again.document.boundsOf(again.groupId))
         assertEquals(before.left, after.left, 1e-6)
         assertEquals(before.top, after.top, 1e-6)
+        // Grubu çözülmüş ve taşınmış lejant da yenilenince aynı köşede kalır.
+        val loose = moved.ungroup(r.groupId)!!.first
+        val was = loose.layers.last().children.mapNotNull { it.bounds() }.reduce(Rect::union)
+        val redo = assertNotNull(loose.withColorLegend(LegendOptions(rgb = false, cmyk = false)))
+        val box = assertNotNull(redo.document.boundsOf(redo.groupId))
+        assertEquals(was.left, box.left, 1e-6)
+        assertEquals(was.top, box.top, 1e-6)
     }
 }
