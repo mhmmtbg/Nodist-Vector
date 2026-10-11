@@ -1069,6 +1069,19 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
         if (present.findLayer(id) != null) state = state.copy(activeLayerId = id)
     }
 
+    /**
+     * Katman satırına dokunuldu: katman etkin olur ve içindeki (görünür, kilitsiz) nesneler tuvalde seçilir.
+     * Kilitli ya da gizli katman yalnızca etkin katman yapılır.
+     */
+    fun pickLayer(id: String) {
+        val layer = present.findLayer(id) ?: return
+        if (state.pen != null) finishPen()
+        val ids = if (layer.visible && !layer.locked) layer.children.filter { it.visible && !it.locked }.map { it.id }.toSet() else emptySet()
+        // Kalem ve çizim araçlarıyla çalışırken katman seçmek aracı değiştirmez; yalnızca etkin katman değişir.
+        val drawing = state.tool != Tool.Select && state.tool != Tool.Direct && state.tool != Tool.Hand
+        state = if (drawing || ids.isEmpty()) state.copy(activeLayerId = id) else state.withSelection(ids).copy(activeLayerId = id, nodeEdit = null, tool = Tool.Select)
+    }
+
     fun addLayer() {
         val layer = Layer(name = present.nextLayerName())
         commit(present.addLayer(layer, state.activeLayerId)) { it.copy(activeLayerId = layer.id) }

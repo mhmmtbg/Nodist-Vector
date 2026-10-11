@@ -55,6 +55,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import io.github.mhmmtbg.mobileillustrator.model.Vec2
 import io.github.mhmmtbg.mobileillustrator.model.boundsOf
+import io.github.mhmmtbg.mobileillustrator.model.boundsEach
 import io.github.mhmmtbg.mobileillustrator.render.DocumentRenderer
 
 /**
@@ -82,6 +83,7 @@ fun CanvasView(vm: EditorViewModel, modifier: Modifier = Modifier) {
     val presentState = remember(vm) { derivedStateOf(referentialEqualityPolicy()) { vm.state.history.present } }
     val previewing = remember(vm) { derivedStateOf { vm.state.preview != null } }
     // Seçili nesnelerin üst düzey kimlikleri: kalabalık belgede bunlar ayrı çizilir.
+    val eachBounds = remember { EachBounds() }
     val selectedTop = remember(vm) { derivedStateOf { SceneCache.topLevelOf(vm.state.history.present, vm.state.selection) } }
 
     // Görünüm (kaydırma, yakınlaştırma) değişirken kalabalık belge keskin olarak yeniden çizilmez; hareket
@@ -291,6 +293,10 @@ fun CanvasView(vm: EditorViewModel, modifier: Modifier = Modifier) {
                     }
                 }
             } else if (state.selection.isNotEmpty() && state.pen == null) {
+                // Birden çok nesne seçiliyse her biri kendi çerçevesiyle gösterilir; tutamaçlar ortak kutudadır.
+                if (state.selection.size > 1) {
+                    for (box in eachBounds.of(document, state.selection)) outline(box, viewport, AppColors.Selection.copy(alpha = 0.85f), 1.dp.toPx())
+                }
                 document.boundsOf(state.selection)?.let { selectionBox(it, viewport, vm.rotateHandleOffsetPx(), state.tool == Tool.Select) }
             }
 
@@ -350,6 +356,23 @@ private fun DrawScope.outline(rect: Rect, viewport: Viewport, color: Color, widt
     val tl = viewport.toScreen(Vec2(rect.left, rect.top))
     val size = Size((rect.width * viewport.scale).toFloat(), (rect.height * viewport.scale).toFloat())
     drawRect(color, tl, size, style = Stroke(width))
+}
+
+/** Seçili nesnelerin tek tek kutuları; belge ya da seçim değişmedikçe yeniden hesaplanmaz. */
+private class EachBounds {
+    private var document: Document? = null
+    private var selection: Set<String>? = null
+    private var boxes: List<Rect> = emptyList()
+
+    fun of(doc: Document, ids: Set<String>): List<Rect> {
+        if (doc !== document || ids !== selection) {
+            document = doc
+            selection = ids
+            // Çok kalabalık seçimde binlerce çerçeve hem yavaş hem okunaksız olur.
+            boxes = if (ids.size > 3000) emptyList() else doc.boundsEach(ids)
+        }
+        return boxes
+    }
 }
 
 private fun DrawScope.selectionBox(rect: Rect, viewport: Viewport, rotateOffset: Float, handles: Boolean) {

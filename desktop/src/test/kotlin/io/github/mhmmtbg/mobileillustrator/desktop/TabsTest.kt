@@ -10,6 +10,7 @@ import io.github.mhmmtbg.mobileillustrator.model.Rgba
 import io.github.mhmmtbg.mobileillustrator.model.TextNode
 import io.github.mhmmtbg.mobileillustrator.model.colorGroups
 import io.github.mhmmtbg.mobileillustrator.model.findNode
+import io.github.mhmmtbg.mobileillustrator.model.boundsEach
 import io.github.mhmmtbg.mobileillustrator.editor.TextPrompt
 import io.github.mhmmtbg.mobileillustrator.render.TextOutliner
 import io.github.mhmmtbg.mobileillustrator.render.DocumentRenderer
@@ -245,5 +246,27 @@ class TabsTest {
         assertEquals(120.0, vm.state.textPrompt!!.tracking)
         s.ui { vm.confirmText(vm.state.textPrompt!!.copy(tracking = -40.0)) }
         assertEquals(-40.0, (vm.state.document.findNode(id) as TextNode).tracking)
+    }
+
+    @Test
+    fun tappingALayerSelectsItsObjectsAndEachSelectedObjectHasItsOwnBox() {
+        val s = start()
+        val vm = s.vm
+        s.ui { vm.openSample() }
+        s.idle()
+        val license = vm.state.document.layers.first { it.name == "License" }
+        s.ui { vm.pickLayer(license.id) }
+        assertEquals(license.id, vm.state.activeLayerId)
+        assertEquals(license.children.map { it.id }.toSet(), vm.state.selection)
+        assertEquals(license.children.size, vm.state.document.boundsEach(vm.state.selection).size)
+        // Çizim aracı etkinken katmana dokunmak yalnızca etkin katmanı değiştirir.
+        val palette = vm.state.document.layers.first { it.name == "Pallette" }
+        s.ui { vm.selectTool(Tool.Rectangle); vm.pickLayer(palette.id) }
+        assertEquals(palette.id, vm.state.activeLayerId)
+        assertEquals(Tool.Rectangle, vm.state.tool)
+        // Bir rengi seçince o renkteki her nesnenin (grupların içindekiler dahil) kutusu ayrı ayrı bulunur.
+        val top = vm.state.document.colorGroups().first()
+        s.ui { vm.selectColor(top.rgb) }
+        assertEquals(top.nodeIds.size, vm.state.document.boundsEach(vm.state.selection).size)
     }
 }

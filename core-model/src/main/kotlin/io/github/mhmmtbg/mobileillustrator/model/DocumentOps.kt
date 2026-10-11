@@ -52,6 +52,23 @@ fun Document.boundsOf(ids: Collection<String>): Rect? {
 }
 
 /**
+ * Seçili düğümlerin her birinin belge uzayındaki sınır kutusu (iç içe olanlar dahil); ağaç tek geçişte taranır.
+ * Seçili bir grubun içindekiler ayrıca verilmez.
+ */
+fun Document.boundsEach(ids: Set<String>): List<Rect> {
+    if (ids.isEmpty()) return emptyList()
+    val out = ArrayList<Rect>(ids.size)
+    fun walk(nodes: List<Node>, m: Matrix) {
+        for (n in nodes) {
+            if (n.id in ids) n.boundsIn(m)?.let(out::add)
+            else if (n is GroupNode) walk(n.children, m * n.transform)
+        }
+    }
+    for (l in layers) walk(l.children, Matrix.Identity)
+    return out
+}
+
+/**
  * Ebeveyn uzayında [m] dönüşümünü uygular. Dönüşümü birim olan yollarda geometri doğrudan
  * değiştirilir; böylece kontur kalınlığı ölçeklemeyle bozulmaz (Illustrator'ın varsayılanı).
  */

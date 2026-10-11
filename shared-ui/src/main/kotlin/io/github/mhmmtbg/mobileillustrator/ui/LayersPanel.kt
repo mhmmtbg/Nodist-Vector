@@ -284,7 +284,7 @@ private fun LayerRow(vm: EditorViewModel, row: PanelRow.OfLayer, onRename: () ->
                 .weight(1f)
                 .fillMaxHeight()
                 .clickable(role = if (state.multiSelect) Role.Checkbox else Role.Tab) {
-                    if (state.multiSelect) vm.toggleLayerSelected(layer.id) else vm.setActiveLayer(layer.id)
+                    if (state.multiSelect) vm.toggleLayerSelected(layer.id) else vm.pickLayer(layer.id)
                 }
                 .semantics { selected = if (state.multiSelect) checked else active }
                 .padding(horizontal = 4.dp),
