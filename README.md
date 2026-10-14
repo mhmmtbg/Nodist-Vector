@@ -62,8 +62,15 @@ yüklenir ve PNG olarak dışa aktarılır. Ekran görüntüleri aynı Release s
 - Seçim: taşı, ölçekle, döndür; seçim kutusu dokunduğu bütün nesneleri seçer (tamamı içinde olmasa da); sayısal genişlik/yükseklik/açı, yatay ve dikey çevirme.
 - Doğrudan seçim: düğümleri ve tutamaçları sürükle, yola dokunarak düğüm ekle, sil, köşe/yumuşak çevir.
 - Kalem (Bezier), kurşun kalem, dikdörtgen, elips, çizgi, metin, damlalık; yalnızca tuvali kaydıran el aracı.
-- Hizalama ve dağıtma, kenarlara ve merkezlere yakalama (kılavuz çizgileriyle).
-- Şekil işlemleri: birleştir, öndekini çıkar, kesiştir, dışla. Kırpma maskesi yap/bırak.
+- Hizalama ve dağıtma, kenarlara ve merkezlere yakalama (kılavuz çizgileriyle). Hizalama hedefi: seçim, çalışma yüzeyi ya da anahtar nesne; belirli boşlukla dağıtma.
+- Şekil işlemleri: birleştir, öndekini çıkar, kesiştir, dışla, böl. Kırpma maskesi yap/bırak. Bileşik yol yap/çöz, yolları birleştir.
+- Ek araçlar: makas (yolu keser), bıçak (dolgulu şekilleri çizgi boyunca böler), yuvarlak dikdörtgen, çokgen, yıldız.
+- Kontur ana hattı (konturu dolu şekle çevirir), yolu ötele, değişken genişlikli kontur, ok uçları, kontur hizası (içeri/dışarı), dış kontur.
+- Dönüşüm araçları: döndür, ölçekle, yansıt, yatır; başvuru noktası ve kopya seçenekleri; "Tekrar dönüştür". Aynısını seç (dolgu, kontur, kalınlık, saydamlık, tür).
+- Çalışma yüzeyi yönetimi: ekle, çoğalt, sil, adlandır, sayısal konum/boyut, sanata sığdır, yüzey başına dışa aktar.
+- Cetveller, kılavuz çizgileri (cetvelden sürüklenir, yapışır, kilitlenir), ızgara ve ızgaraya yakalama; renk örnekleri (swatch) paneli (örnek rengini değiştirmek her kullanıldığı yeri değiştirir).
+- Görünüm ve efektler (düz vektör olarak üretilir): karışım modu, gölge, desenle doldur, fırça (şekli yola diz), metni yola diz, ağ gradyan, opaklık maskesi; ana hat görünümü.
+- Yardım: Dosya menüsündeki "Yardım ve kılavuz" (Windows'ta F1) arama kutulu kullanım kılavuzunu ve kısayol tablosunu açar.
 - Dolgu ve kontur: düz renk, doğrusal/dairesel gradyan (duraklar ve açı), opaklık; kontur kalınlığı, uç, köşe, kesikli çizgi.
 - Renk seçici: RGB ve CMYK modlarının ikisinde de renk tekerleği ve parlaklık; seçilen rengin kodu (#RRGGBB), RGB ve
   CMYK değerleri her zaman görünür. CMYK modunda mürekkep sürgüleri de durur ve dosyaya CMYK değerleri yazılır.
@@ -93,7 +100,7 @@ görüntüye çizilip önbellekten gösterilir; kesin çizim arka planda hazırl
 
 **Windows:** aynı ekranlar ve aynı dosya desteği. Fare tekerleği yakınlaştırır, sağ ya da orta tuşla
 sürüklemek kaydırır. Kısayollar: Ctrl+Z / Ctrl+Shift+Z, Ctrl+S, Ctrl+O, Ctrl+A, Ctrl+D, Ctrl+G,
-Ctrl+0 (sığdır), Ctrl+C / Ctrl+X / Ctrl+V, Ctrl+Shift+I (dışarıdan ekle), Ctrl+Tab (sonraki sekme), Ctrl+W (sekmeyi kapat), Delete; araçlar V, A, P, N, M, L, T, I, H (el). Komut satırında dosya yolu verilirse o dosya açılır.
+Ctrl+0 (sığdır), Ctrl+8 / Ctrl+Alt+8 (bileşik yol yap/çöz), Ctrl+J (birleştir), Ctrl+R (cetveller), F1 (yardım), Ctrl+C / Ctrl+X / Ctrl+V, Ctrl+Shift+I (dışarıdan ekle), Ctrl+Tab (sonraki sekme), Ctrl+W (sekmeyi kapat), Delete; araçlar V, A, P, N, E (silgi), C (makas), K (bıçak), M, Q (yuvarlak dikdörtgen), L, Y (çokgen), U (yıldız), T, I, H (el). Komut satırında dosya yolu verilirse o dosya açılır.
 
 **Reklam ve satın alma (yalnızca Android):** uygulama şerit reklam gösterir. Dosya menüsündeki
 "Geliştiriciye kahve ısmarla" tek seferlik bir Google Play satın almasıdır; alınınca reklamlar kalıcı
@@ -114,7 +121,7 @@ olarak kalkar. Ayrıntılar ve mağaza kurulumu: [store/PLAY-STORE.md](store/PLA
 | CMYK, gri ve spot (Pantone) renkler | Değerler ve spot adları korunur, kaydederken aynen geri yazılır. Ekranda yaklaşık sRGB önizleme gösterilir; ICC profilli renk yönetimi yok |
 | Gömülü görseller | PNG/JPEG; CMYK JPEG'lerde renk kayabilir |
 | Metin | Dosyaya gömülü fontun (TrueType, OpenType/CFF) harf biçimleriyle birebir gösterilir ve metin olarak kalır. Metni düzenlersen cihazın fontuna geçer. Eski Type 1 fontlar cihaz fontuyla gösterilir |
-| Ağ (mesh) gradyan, desen dolgusu, opaklık maskesi | Düz renk / yok sayılır (açılışta uyarı gösterilir) |
+| Ağ (mesh) gradyan, desen dolgusu, opaklık maskesi | Dosyadan gelenler düz renk / yok sayılır (açılışta uyarı gösterilir). Uygulamada yapılanlar çok parçalı düz vektör olarak yazılır |
 | Canlı efektler, semboller, fırçalar | Illustrator'ın PDF'e yazdığı düzleştirilmiş haliyle gelir |
 
 Gereksinimler ve sınırlar:

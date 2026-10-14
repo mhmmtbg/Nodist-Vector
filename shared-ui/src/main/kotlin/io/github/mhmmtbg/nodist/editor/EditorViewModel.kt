@@ -44,6 +44,8 @@ import io.github.mhmmtbg.nodist.model.tilePattern
 import io.github.mhmmtbg.nodist.model.withBlendMode
 import io.github.mhmmtbg.nodist.model.baked
 import io.github.mhmmtbg.nodist.model.Matrix
+import io.github.mhmmtbg.nodist.model.meshGradient
+import io.github.mhmmtbg.nodist.model.opacityMask
 import io.github.mhmmtbg.nodist.model.Node
 import io.github.mhmmtbg.nodist.model.Paint
 import io.github.mhmmtbg.nodist.model.PathFit
@@ -1418,6 +1420,29 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
         val guide = paths.firstOrNull { p -> p.subpaths.any { !it.closed } } ?: return@applyEffect null
         val shape = paths.first { it.id != guide.id }
         d.artBrush(shape.id, guide.id, thickness.coerceAtLeast(0.05))?.let { it.first to setOf(it.second) }
+    }
+
+    /**
+     * Ağ gradyan: seçili kapalı yolu hücrelere böler. Köşe renkleri belgedeki ilk dört renk örneğidir;
+     * örnek yoksa mevcut dolgu ve kontur renkleri kullanılır.
+     */
+    fun meshGradientCmd(rows: Int, cols: Int) = applyEffect("Ağ gradyan için kapalı bir yol seçin") { d ->
+        val id = state.selection.singleOrNull() ?: return@applyEffect null
+        val sw = d.swatches.map { it.color }
+        val a = state.fill ?: Rgba.rgb(0xFF9A3C)
+        val b = state.stroke ?: Rgba.rgb(0x7950F2)
+        val c = sw.getOrNull(0) ?: a
+        val e = sw.getOrNull(1) ?: b
+        val f = sw.getOrNull(2) ?: b
+        val g = sw.getOrNull(3) ?: a
+        d.meshGradient(id, rows, cols, c, e, f, g)?.let { it.first to setOf(it.second) }
+    }
+
+    /** Opaklık maskesi: en üstteki seçili gradyanlı şekil, diğer seçili nesnenin saydamlığını belirler. */
+    fun opacityMaskCmd() = applyEffect("Maske için iki nesne seçin: en üstteki doğrusal gradyanlı şekil maske olur (beyaz görünür, siyah gizler)") { d ->
+        val ordered = d.layers.flatMap { it.children }.filter { it.id in state.selection }
+        if (ordered.size != 2) return@applyEffect null
+        d.opacityMask(ordered[1].id, ordered[0].id)?.let { it.first to setOf(it.second) }
     }
 
     /** Seçili metni, seçili açık yolun boyunca dizer; metin yola çevrilir, yol yerinde kalır. */

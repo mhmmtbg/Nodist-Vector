@@ -453,6 +453,10 @@ fun AppearanceDialog(vm: EditorViewModel, onDismiss: () -> Unit) {
             vm.tilePatternCmd(v[0], v[1])
             done()
         }
+        "mesh" -> ParamDialog(tr("Ağ gradyan"), listOf(tr("Satır sayısı"), tr("Sütun sayısı")), listOf(12.0, 12.0), { sub = null }) { v ->
+            vm.meshGradientCmd(v[0].toInt(), v[1].toInt())
+            done()
+        }
         "brush" -> ParamDialog(tr("Fırça: şekli yola diz"), listOf(tr("Kalınlık çarpanı")), listOf(1.0), { sub = null }) { v ->
             vm.artBrushCmd(v[0])
             done()
@@ -471,13 +475,15 @@ fun AppearanceDialog(vm: EditorViewModel, onDismiss: () -> Unit) {
                         "align" to tr("Kontur hizası…"),
                         "pattern" to tr("Desenle doldur…"),
                         "brush" to tr("Fırça: şekli yola diz…"),
+                        "mesh" to tr("Ağ gradyan…"),
+                        "opmask" to tr("Opaklık maskesi (gradyanlı üst şekil)"),
                         "textpath" to tr("Metni yola diz"),
                     )
                     for ((id, label) in items) {
                         Text(
                             label,
                             Modifier.fillMaxWidth().clickable(role = Role.Button) {
-                                if (id == "textpath") { vm.textOnPathCmd(); onDismiss() } else sub = id
+                                if (id == "textpath") { vm.textOnPathCmd(); onDismiss() } else if (id == "opmask") { vm.opacityMaskCmd(); onDismiss() } else sub = id
                             }.padding(vertical = 12.dp),
                             style = MaterialTheme.typography.bodyLarge,
                         )

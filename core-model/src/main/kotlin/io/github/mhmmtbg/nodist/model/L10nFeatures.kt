@@ -185,4 +185,11 @@ internal val FeatureStrings: Map<String, String> = mapOf(
     "Renk tonu" to "Colour",
     "Çarpma" to "Multiply",
     "Aydınlık" to "Luminosity",
+    "Ağ gradyan" to "Mesh gradient",
+    "Ağ gradyan…" to "Mesh gradient…",
+    "Satır sayısı" to "Rows",
+    "Sütun sayısı" to "Columns",
+    "Opaklık maskesi (gradyanlı üst şekil)" to "Opacity mask (gradient shape on top)",
+    "Ağ gradyan için kapalı bir yol seçin" to "Select a closed path for the mesh gradient",
+    "Maske için iki nesne seçin: en üstteki doğrusal gradyanlı şekil maske olur (beyaz görünür, siyah gizler)" to "Select two objects: the topmost shape with a linear gradient becomes the mask (white shows, black hides)",
 )
