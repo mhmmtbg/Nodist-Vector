@@ -109,7 +109,7 @@ class RoundTripTest {
         val text = String(bytes, Charsets.ISO_8859_1)
         val own = "(" + AiExporter.PRODUCER + ")"
         assertTrue(own in text)
-        val foreign = text.replace(own, "(Other)").toByteArray(Charsets.ISO_8859_1)
+        val foreign = text.replace(own, "(" + "X".repeat(AiExporter.PRODUCER.length) + ")").toByteArray(Charsets.ISO_8859_1)
         assertEquals(bytes.size, foreign.size)
         assertEquals(listOf(true, true), AiImporter.import(bytes, "a").document.layers.map { it.locked })
         val back = AiImporter.import(foreign, "a")
