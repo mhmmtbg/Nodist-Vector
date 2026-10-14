@@ -54,6 +54,7 @@ fun PathNode.baked(): PathNode {
         subpaths = subpaths.map { it.transformed(m) },
         fill = fill?.transformedBy(m),
         stroke = stroke?.let { st -> st.copy(paint = st.paint.transformedBy(m), width = st.width * m.meanScale, dash = st.dash.map { it * m.meanScale }) },
+        effects = if (effects.isEmpty()) effects else effects.map { EffectCodec.transformed(it, m) },
     )
 }
 

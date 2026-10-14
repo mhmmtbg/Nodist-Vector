@@ -101,4 +101,17 @@ class LiveEffectsTest {
         // Bozuk ya da bilinmeyen parçalar atlanır
         assertEquals(listOf<Effect>(Effect.RoundCorners(2.0)), EffectCodec.decode("Bilinmez(a=1);RoundCorners(r=2);Pattern(s=9)", emptyList()))
     }
+
+    @Test
+    fun movingAPathCarriesTheMaskGradient() {
+        val grad = Paint.LinearGradient(Vec2(0.0, 0.0), Vec2(100.0, 0.0), listOf(GradientStop(0.0, Rgba.Black), GradientStop(1.0, Rgba(1.0, 1.0, 1.0))))
+        val n = square().copy(effects = listOf(Effect.OpacityMask(grad, 4)))
+        val moved = n.applied(Matrix.translate(300.0, 0.0)) as PathNode
+        val g = (moved.effects.single() as Effect.OpacityMask).gradient
+        assertEquals(300.0, g.transform.apply(g.start).x, 1e-9)
+        // Görünüm de aynı kalır (şeritler nesneyle birlikte gider).
+        val before = (LiveEffects.expand(n, ctx) as GroupNode).children.map { it.opacity }
+        val after = (LiveEffects.expand(moved, ctx) as GroupNode).children.map { it.opacity }
+        assertEquals(before, after)
+    }
 }

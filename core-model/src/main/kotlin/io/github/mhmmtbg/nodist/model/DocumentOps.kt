@@ -78,6 +78,8 @@ fun Node.applied(m: Matrix): Node = when (this) {
             subpaths = subpaths.map { it.transformed(m) },
             fill = fill?.transformedBy(m),
             stroke = stroke?.let { it.copy(paint = it.paint.transformedBy(m)) },
+            // Efektlerin yerel uzaydaki verisi (opaklık maskesinin gradyanı) geometriyle birlikte taşınır.
+            effects = if (effects.isEmpty()) effects else effects.map { EffectCodec.transformed(it, m) },
         )
     } else {
         copy(transform = m * transform)
