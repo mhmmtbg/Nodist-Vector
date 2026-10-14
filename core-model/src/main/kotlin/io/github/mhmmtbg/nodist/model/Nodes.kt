@@ -160,12 +160,22 @@ data class Artboard(
     val bounds: Rect,
 )
 
+/** Kılavuz çizgisi: dikey ([vertical]) ise x = [position], değilse y = [position] (belge uzayı). */
+data class Guide(val id: String = newId(), val vertical: Boolean, val position: Double, val locked: Boolean = false)
+
+/** Belgeye kayıtlı renk örneği. */
+data class Swatch(val name: String, val color: Rgba)
+
 /** Değişmez belge. Her düzenleme yeni bir kopya üretir; geri al/yinele bunun üzerine kuruludur. */
 data class Document(
     val name: String = "Adsız",
     val artboards: List<Artboard>,
     /** Alttan üste doğru. */
     val layers: List<Layer>,
+    /** Cetvelden çekilen kılavuz çizgileri. */
+    val guides: List<Guide> = emptyList(),
+    /** Renk örnekleri paneli. */
+    val swatches: List<Swatch> = emptyList(),
 ) {
     companion object {
         fun blank(width: Double = 1080.0, height: Double = 1080.0, name: String = "Adsız") = Document(

@@ -169,10 +169,12 @@ object AiExporter {
             val order = refs(layerIds.asReversed())
             val off = refs(doc.layers.indices.filter { !doc.layers[it].visible }.map { layerIds[it] } + nodeOcgs.filter { !it.second }.map { it.first })
             val locked = refs(doc.layers.indices.filter { doc.layers[it].locked }.map { layerIds[it] } + nodeOcgs.filter { it.third }.map { it.first })
+            // Kılavuzlar, renk örnekleri ve çalışma yüzeyi adları PDF'in görünür içeriğinde yer almaz; özel bir alanda saklanır.
+            val meta = io.github.mhmmtbg.nodist.model.DocMeta.encode(doc)?.let { " /NodistMeta ${textString(it)}" } ?: ""
             set(
                 catalogId,
                 "<< /Type /Catalog /Pages $pagesId 0 R /OCProperties << /OCGs [$all] " +
-                    "/D << /Order [$order] /OFF [$off] /Locked [$locked] >> >> >>",
+                    "/D << /Order [$order] /OFF [$off] /Locked [$locked] >> >>$meta >>",
             )
 
             val out = ByteArrayOutputStream(1 shl 16)

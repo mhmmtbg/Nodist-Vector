@@ -22,6 +22,8 @@ import io.github.mhmmtbg.nodist.model.Stroke
 import io.github.mhmmtbg.nodist.model.SubPath
 import io.github.mhmmtbg.nodist.model.TextNode
 import io.github.mhmmtbg.nodist.model.Vec2
+import io.github.mhmmtbg.nodist.model.addGuide
+import io.github.mhmmtbg.nodist.model.addSwatch
 import io.github.mhmmtbg.nodist.model.bounds
 import io.github.mhmmtbg.nodist.pdf.PngDecoder
 import io.github.mhmmtbg.nodist.pdf.PngEncoder
@@ -264,6 +266,22 @@ class RoundTripTest {
         val kids = back.layers.single().children
         assertEquals(2, kids.size)
         near(270.0, kids[1].bounds()!!.left)
+    }
+
+    @Test
+    fun guidesSwatchesAndArtboardNamesSurviveInOurOwnFiles() {
+        val base = Document(
+            name = "meta",
+            artboards = listOf(Artboard(name = "Kapak", bounds = Rect(0.0, 0.0, 200.0, 100.0)), Artboard(name = "Arka kapak", bounds = Rect(260.0, 0.0, 460.0, 100.0))),
+            layers = listOf(Layer(name = "L", children = listOf(PathNode(id = "n", subpaths = listOf(Shapes.rect(Rect(10.0, 10.0, 60.0, 60.0))), fill = solid(0x123456))))),
+        )
+        val doc = base.addGuide(true, 120.5).first.addGuide(false, 33.0).first.addSwatch(Rgba.rgb(0xE64980), "Pembe")
+        val back = roundTrip(doc)
+        assertEquals(listOf("Kapak", "Arka kapak"), back.artboards.map { it.name })
+        assertEquals(listOf(true to 120.5, false to 33.0), back.guides.map { it.vertical to it.position })
+        assertEquals(listOf("Pembe"), back.swatches.map { it.name })
+        // Meta yoksa dosyada da yoktur.
+        assertTrue(!String(AiExporter.export(single()), Charsets.ISO_8859_1).contains("NodistMeta"))
     }
 
     @Test

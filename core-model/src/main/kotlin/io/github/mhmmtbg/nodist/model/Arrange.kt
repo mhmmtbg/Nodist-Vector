@@ -146,25 +146,47 @@ object Snap {
     private fun xs(r: Rect) = doubleArrayOf(r.left, r.center.x, r.right)
     private fun ys(r: Rect) = doubleArrayOf(r.top, r.center.y, r.bottom)
 
-    /** Taşınan kutunun kenarlarını ve ortasını, [targets] kutularının kenar ve ortalarına [threshold] yakınlıkta yapıştırır. */
-    fun box(moving: Rect, targets: List<Rect>, threshold: Double): SnapResult {
+    /** [values] değerlerine en yakın ızgara çizgileri ([grid] aralıklı). */
+    fun gridLines(values: DoubleArray, grid: Double): List<Double> =
+        if (grid <= 0.0) emptyList() else values.map { Math.round(it / grid) * grid }.distinct()
+
+    /**
+     * Taşınan kutunun kenarlarını ve ortasını, [targets] kutularının kenar ve ortalarına [threshold] yakınlıkta yapıştırır.
+     * [linesX] ve [linesY] ek yapışma çizgileridir (kılavuzlar, ızgara).
+     */
+    fun box(
+        moving: Rect,
+        targets: List<Rect>,
+        threshold: Double,
+        linesX: List<Double> = emptyList(),
+        linesY: List<Double> = emptyList(),
+    ): SnapResult {
         var bestX = Double.MAX_VALUE
         var bestY = Double.MAX_VALUE
         val mx = xs(moving)
         val my = ys(moving)
-        for (t in targets) {
-            for (a in mx) for (b in xs(t)) { val d = b - a; if (abs(d) < abs(bestX)) bestX = d }
-            for (a in my) for (b in ys(t)) { val d = b - a; if (abs(d) < abs(bestY)) bestY = d }
-        }
+        val candX = ArrayList<Double>(targets.size * 3 + linesX.size)
+        val candY = ArrayList<Double>(targets.size * 3 + linesY.size)
+        for (t in targets) { for (b in xs(t)) candX += b; for (b in ys(t)) candY += b }
+        candX += linesX
+        candY += linesY
+        for (b in candX) for (a in mx) { val d = b - a; if (abs(d) < abs(bestX)) bestX = d }
+        for (b in candY) for (a in my) { val d = b - a; if (abs(d) < abs(bestY)) bestY = d }
         val dx = if (abs(bestX) <= threshold) bestX else 0.0
         val dy = if (abs(bestY) <= threshold) bestY else 0.0
         val gx = ArrayList<Double>()
         val gy = ArrayList<Double>()
-        if (abs(bestX) <= threshold) for (t in targets) for (b in xs(t)) for (a in mx) if (abs(a + dx - b) < 1e-6 && b !in gx) gx += b
-        if (abs(bestY) <= threshold) for (t in targets) for (b in ys(t)) for (a in my) if (abs(a + dy - b) < 1e-6 && b !in gy) gy += b
+        if (abs(bestX) <= threshold) for (b in candX) for (a in mx) if (abs(a + dx - b) < 1e-6 && b !in gx) gx += b
+        if (abs(bestY) <= threshold) for (b in candY) for (a in my) if (abs(a + dy - b) < 1e-6 && b !in gy) gy += b
         return SnapResult(dx, dy, gx, gy)
     }
 
     /** Tek bir noktayı (çizim ya da ölçekleme sırasında parmak) hedeflerin kenar ve ortalarına yapıştırır. */
-    fun point(p: Vec2, targets: List<Rect>, threshold: Double): SnapResult = box(Rect(p.x, p.y, p.x, p.y), targets, threshold)
+    fun point(
+        p: Vec2,
+        targets: List<Rect>,
+        threshold: Double,
+        linesX: List<Double> = emptyList(),
+        linesY: List<Double> = emptyList(),
+    ): SnapResult = box(Rect(p.x, p.y, p.x, p.y), targets, threshold, linesX, linesY)
 }

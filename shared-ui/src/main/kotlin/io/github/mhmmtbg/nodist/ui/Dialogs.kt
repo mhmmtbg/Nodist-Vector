@@ -499,7 +499,7 @@ fun ColorPickerDialog(initial: Rgba, onDismiss: () -> Unit, onPick: (Rgba) -> Un
 }
 
 @Composable
-private fun ChoiceRow(title: String, options: List<Pair<String, Boolean>>, onPick: (Int) -> Unit) {
+internal fun ChoiceRow(title: String, options: List<Pair<String, Boolean>>, onPick: (Int) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(title, style = MaterialTheme.typography.labelMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

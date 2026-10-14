@@ -44,6 +44,9 @@ enum class DashStyle(val pattern: List<Double>) {
 
 enum class PaintTarget { Fill, Stroke, Opacity }
 
+/** Hizalamanın neye göre yapıldığı. [Key]: seçimdeki en üstteki nesne (anahtar nesne) yerinde kalır, ötekiler ona hizalanır. */
+enum class AlignTarget { Selection, Artboard, Key }
+
 enum class ExportFormat(val extension: String, val mimeType: String) {
     /**
      * Uygulamanın kendi dosya biçimi (.nodist): katmanlar, gruplar, düzenlenebilir metin, kilit ve görünürlük gibi her şey
@@ -152,6 +155,7 @@ data class EditorState(
     val cornerRatio: Double = 0.2,
     /** Çokgen aracının kenar sayısı. */
     val polygonSides: Int = 6,
+    val alignTarget: AlignTarget = AlignTarget.Selection,
     /** Yıldız aracının uç sayısı ve iç yarıçapının dış yarıçapa oranı. */
     val starPoints: Int = 5,
     val starInner: Double = 0.5,

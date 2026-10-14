@@ -60,6 +60,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.mhmmtbg.nodist.editor.AlignTarget
 import io.github.mhmmtbg.nodist.editor.EditorState
 import io.github.mhmmtbg.nodist.editor.EditorViewModel
 import io.github.mhmmtbg.nodist.editor.ExportFormat
@@ -94,16 +95,23 @@ private val Tools = listOf(
     ToolSpec(Tool.Pen, AppIcons.Pen, "Kalem"),
     ToolSpec(Tool.Pencil, AppIcons.Pencil, "Kurşun kalem"),
     ToolSpec(Tool.Eraser, AppIcons.Eraser, "Silgi"),
-    ToolSpec(Tool.Scissors, AppIcons.Scissors, "Makas"),
     ToolSpec(Tool.Rectangle, AppIcons.Rectangle, "Dikdörtgen"),
-    ToolSpec(Tool.RoundedRect, AppIcons.RoundedRect, "Yuvarlak dikdörtgen"),
     ToolSpec(Tool.Ellipse, AppIcons.Ellipse, "Elips"),
-    ToolSpec(Tool.Polygon, AppIcons.Polygon, "Çokgen"),
-    ToolSpec(Tool.Star, AppIcons.Star, "Yıldız"),
     ToolSpec(Tool.Line, AppIcons.Line, "Çizgi"),
     ToolSpec(Tool.Text, AppIcons.Text, "Metin"),
     ToolSpec(Tool.Eyedropper, AppIcons.Eyedropper, "Damlalık"),
     ToolSpec(Tool.Hand, AppIcons.Hand, "Kaydır"),
+)
+
+/**
+ * Daha az kullanılan araçlar: dar telefon çubuğunda tek bir "Diğer araçlar" düğmesinin menüsünde durur; yan şeritte
+ * (tablet, yatay telefon) doğrudan görünürler.
+ */
+private val ExtraTools = listOf(
+    ToolSpec(Tool.Scissors, AppIcons.Scissors, "Makas"),
+    ToolSpec(Tool.RoundedRect, AppIcons.RoundedRect, "Yuvarlak dikdörtgen"),
+    ToolSpec(Tool.Polygon, AppIcons.Polygon, "Çokgen"),
+    ToolSpec(Tool.Star, AppIcons.Star, "Yıldız"),
 )
 
 @Composable
@@ -124,6 +132,11 @@ fun EditorScreen(vm: EditorViewModel, host: PlatformHost) {
     var showStrokeOptions by remember { mutableStateOf(false) }
     var showTransform by remember { mutableStateOf(false) }
     var exportingSelection by remember { mutableStateOf(false) }
+    var showTransformTools by remember { mutableStateOf(false) }
+    var spacingAxis by remember { mutableStateOf<Boolean?>(null) }
+    var showSelectSame by remember { mutableStateOf(false) }
+    var showArtboards by remember { mutableStateOf(false) }
+    var exportingArtboard by remember { mutableStateOf<String?>(null) }
 
     // Geri tuşu önce açık panelleri kapatır.
     host.BackHandler(enabled = state.gallery != null || state.layersOpen) {
@@ -167,12 +180,12 @@ fun EditorScreen(vm: EditorViewModel, host: PlatformHost) {
                             Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                                 .onSizeChanged { vm.obscuredBottomPx = if (state.layersOpen) it.height.toFloat() else 0f },
                         ) {
-                            ContextBar(vm, Modifier, onRename = { renaming = it }, onTransform = { showTransform = true }, onExport = { exportingSelection = true })
+                            ContextBar(vm, Modifier, onRename = { renaming = it }, onTransform = { showTransform = true }, onExport = { exportingSelection = true }, onTransformTools = { showTransformTools = true }, onSpacing = { spacingAxis = it }, onSelectSame = { showSelectSame = true })
                             if (state.layersOpen) LayersPanel(vm, host, Modifier.fillMaxWidth().fillMaxHeight(0.46f))
                         }
                     } else {
                         SideEffect { vm.obscuredBottomPx = 0f }
-                        ContextBar(vm, Modifier.align(Alignment.BottomCenter), onRename = { renaming = it }, onTransform = { showTransform = true }, onExport = { exportingSelection = true })
+                        ContextBar(vm, Modifier.align(Alignment.BottomCenter), onRename = { renaming = it }, onTransform = { showTransform = true }, onExport = { exportingSelection = true }, onTransformTools = { showTransformTools = true }, onSpacing = { spacingAxis = it }, onSelectSame = { showSelectSame = true })
                         if (state.layersOpen && !wide) {
                             LayersPanel(vm, host, Modifier.align(Alignment.TopEnd).fillMaxHeight().widthIn(max = 340.dp).fillMaxWidth(0.88f))
                         }
@@ -232,6 +245,38 @@ fun EditorScreen(vm: EditorViewModel, host: PlatformHost) {
         if (b == null) showTransform = false else TransformDialog(b, onDismiss = { showTransform = false }, onFlip = vm::flipSelection) { x, y, w, h, angle ->
             showTransform = false
             vm.transformSelection(x, y, w, h, angle)
+        }
+    }
+    if (showTransformTools) {
+        val last = vm.lastTransform
+        TransformToolsDialog(last?.first, last?.second ?: io.github.mhmmtbg.nodist.model.RefPoint.Center, onDismiss = { showTransformTools = false }) { spec, ref, copy ->
+            showTransformTools = false
+            vm.applyTransform(spec, ref, copy)
+        }
+    }
+    spacingAxis?.let { horizontal ->
+        NumberDialog(tr("Boşlukla dağıt"), tr("Boşluk"), 0.0, onDismiss = { spacingAxis = null }) { gap ->
+            spacingAxis = null
+            vm.distributeWithSpacing(horizontal, gap)
+        }
+    }
+    if (showSelectSame) {
+        SelectSameDialog(onDismiss = { showSelectSame = false }) { kind ->
+            showSelectSame = false
+            vm.selectSimilar(kind)
+        }
+    }
+    if (showArtboards) {
+        ArtboardsDialog(vm, onDismiss = { showArtboards = false }, onExport = { showArtboards = false; exportingArtboard = it })
+    }
+    exportingArtboard?.let { id ->
+        ExportFormatDialog(
+            title = tr("Çalışma yüzeyini dışa aktar"),
+            hint = tr("Yalnızca bu çalışma yüzeyi tek sayfa olarak yazılır."),
+            onDismiss = { exportingArtboard = null },
+        ) { format ->
+            exportingArtboard = null
+            host.pickSaveLocation(vm.suggestedArtboardFileName(id, format)) { vm.exportArtboard(id, it, format) }
         }
     }
     if (exportingSelection) {
@@ -335,6 +380,7 @@ private fun TopBar(
                 item(tr("Dışarıdan ekle… (.nodist, .ai, .pdf, .svg)"), onImport)
                 item(tr("Görsel yerleştir…"), onPlaceImage)
                 if (vm.canPaste) item(tr("Yapıştır")) { vm.paste() }
+                item(tr("Çalışma yüzeyleri…")) { showArtboards = true }
                 item(tr("Belgeyi adlandır…"), onRename)
                 item(tr("Tümünü seç")) { vm.selectAll() }
                 item(if (state.snapping) tr("Yakalama: açık") else tr("Yakalama: kapalı")) { vm.toggleSnapping() }
@@ -440,7 +486,16 @@ internal fun BarButton(icon: ImageVector, label: String, enabled: Boolean = true
 
 /** Seçime ya da etkin araca göre değişen eylemler. Yapılacak bir şey yoksa yer kaplamaz. */
 @Composable
-private fun ContextBar(vm: EditorViewModel, modifier: Modifier, onRename: (String) -> Unit, onTransform: () -> Unit, onExport: () -> Unit) {
+private fun ContextBar(
+    vm: EditorViewModel,
+    modifier: Modifier,
+    onRename: (String) -> Unit,
+    onTransform: () -> Unit,
+    onExport: () -> Unit,
+    onTransformTools: () -> Unit,
+    onSpacing: (Boolean) -> Unit,
+    onSelectSame: () -> Unit,
+) {
     val state = vm.state
     val actions = ArrayList<Pair<String, () -> Unit>>()
     // Alt menüler: "Hizala" ve "Şekil" eylemleri aynı satırda açılır.
@@ -475,6 +530,18 @@ private fun ContextBar(vm: EditorViewModel, modifier: Modifier, onRename: (Strin
                 actions += tr("Yatay dağıt") to { vm.distributeSelection(true) }
                 actions += tr("Dikey dağıt") to { vm.distributeSelection(false) }
             }
+            if (state.selection.size >= 2) {
+                actions += tr("Yatay boşluk…") to { onSpacing(true) }
+                actions += tr("Dikey boşluk…") to { onSpacing(false) }
+            }
+            actions += tr(
+                when (state.alignTarget) {
+                    AlignTarget.Selection -> "Hedef: seçim"
+                    AlignTarget.Artboard -> "Hedef: çalışma yüzeyi"
+                    AlignTarget.Key -> "Hedef: anahtar nesne"
+                },
+            ) to vm::cycleAlignTarget
+
         }
         state.selection.isNotEmpty() && mode == 3 -> {
             actions += tr("‹ Geri") to { mode = 0 }
@@ -504,7 +571,6 @@ private fun ContextBar(vm: EditorViewModel, modifier: Modifier, onRename: (Strin
             val single = nodes.singleOrNull()
             actions += tr("Hizala") to { mode = 1 }
             if (nodes.size >= 2) actions += tr("Şekil") to { mode = 2 }
-            if (nodes.any { it is PathNode }) actions += tr("Yol") to { mode = 4 }
             actions += tr("Dönüştür") to onTransform
             if (single is GroupNode && single.clip != null) actions += tr("Maskeyi bırak") to vm::releaseClippingMask
             if (single is ImageNode) actions += tr("Vektöre çevir") to vm::startTrace
@@ -526,6 +592,10 @@ private fun ContextBar(vm: EditorViewModel, modifier: Modifier, onRename: (Strin
             actions += tr("Katmanda göster") to vm::revealSelectionInLayers
             actions += tr("Dışa aktar…") to onExport
             if (single != null) actions += tr("Adlandır") to { onRename(single.id) }
+            if (nodes.any { it is PathNode }) actions += tr("Yol") to { mode = 4 }
+            actions += tr("Dönüşüm araçları…") to onTransformTools
+            if (vm.lastTransform != null) actions += tr("Tekrar dönüştür") to vm::repeatTransform
+            actions += tr("Aynısını seç…") to onSelectSame
         }
     }
     if (state.pen == null && mode == 0) {
@@ -646,7 +716,8 @@ private val ActionIcons: Map<String, ImageVector> by lazy {
         "Birleştir" to AppIcons.Unite, "Öndekini çıkar" to AppIcons.MinusFront, "Kesiştir" to AppIcons.Intersect,
         "Dışla" to AppIcons.Exclude, "Maske yap" to AppIcons.Mask, "Maskeyi bırak" to AppIcons.Unmask,
         "Bileşik yap" to AppIcons.Compound, "Bileşiği çöz" to AppIcons.Release, "Yolları birleştir" to AppIcons.Join,
-        "Yol" to AppIcons.Nodes,
+        "Yol" to AppIcons.Nodes, "Dönüşüm araçları…" to AppIcons.Transform, "Tekrar dönüştür" to AppIcons.Transform,
+        "Aynısını seç…" to AppIcons.Select,
         "Hizala" to AppIcons.AlignLeft, "Şekil" to AppIcons.Shapes, "Dönüştür" to AppIcons.Transform,
         "Vektöre çevir" to AppIcons.Picture, "Metni düzenle" to AppIcons.Pencil, "Eğ" to AppIcons.Arc, "Yola çevir" to AppIcons.Nodes,
         "Kopyala" to AppIcons.Copy, "Kes" to AppIcons.Cut, "Yapıştır" to AppIcons.Paste, "Çoğalt" to AppIcons.Duplicate,
@@ -775,16 +846,24 @@ private fun formatWidth(w: Double): String {
 @Composable
 private fun ToolRow(vm: EditorViewModel) {
     val active = vm.state.tool
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
-        // Araçlar sığmazsa şerit yana kaydırılır; seçili araç görünür kalır.
-        val fits = maxWidth / Tools.size >= 40.dp
-        val scroll = rememberScrollState()
-        Row(
-            Modifier.fillMaxWidth().then(if (fits) Modifier else Modifier.horizontalScroll(scroll)).padding(horizontal = 4.dp, vertical = 2.dp),
-        ) {
-            for (t in Tools) {
-                val m = if (fits) Modifier.weight(1f) else Modifier.width(44.dp)
-                ToolButton(t, active == t.tool, m.height(46.dp)) { vm.selectTool(t.tool) }
+    var more by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp)) {
+        for (t in Tools) ToolButton(t, active == t.tool, Modifier.weight(1f).height(46.dp)) { vm.selectTool(t.tool) }
+        val extra = ExtraTools.firstOrNull { it.tool == active }
+        Box(Modifier.weight(1f).height(46.dp)) {
+            ToolButton(
+                ToolSpec(extra?.tool ?: Tool.Select, extra?.icon ?: AppIcons.Shapes, "Diğer araçlar"),
+                extra != null,
+                Modifier.fillMaxSize(),
+            ) { more = true }
+            DropdownMenu(expanded = more, onDismissRequest = { more = false }) {
+                for (t in ExtraTools) {
+                    DropdownMenuItem(
+                        text = { Text(tr(t.label)) },
+                        leadingIcon = { Icon(t.icon, contentDescription = null) },
+                        onClick = { more = false; vm.selectTool(t.tool) },
+                    )
+                }
             }
         }
     }
@@ -802,7 +881,7 @@ private fun ToolRail(vm: EditorViewModel) {
             .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        for (t in Tools) ToolButton(t, active == t.tool, Modifier.size(width = 48.dp, height = 44.dp)) { vm.selectTool(t.tool) }
+        for (t in Tools + ExtraTools) ToolButton(t, active == t.tool, Modifier.size(width = 48.dp, height = 44.dp)) { vm.selectTool(t.tool) }
     }
 }
 

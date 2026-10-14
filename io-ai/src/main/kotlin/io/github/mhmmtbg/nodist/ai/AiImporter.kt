@@ -190,8 +190,10 @@ object AiImporter {
                 }
             }.ifEmpty { listOf(Layer(name = "Katman 1")) }
 
+            val built = Document(name = name, artboards = artboards, layers = layers)
+            val meta = if (ours) file.string(root["NodistMeta"])?.text() else null
             return ImportResult(
-                Document(name = name, artboards = artboards, layers = layers),
+                io.github.mhmmtbg.nodist.model.DocMeta.apply(built, meta),
                 warnings.toList(),
                 writtenByThisApp = ours,
             )

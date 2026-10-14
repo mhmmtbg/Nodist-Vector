@@ -52,6 +52,21 @@ import io.github.mhmmtbg.nodist.model.boundsOf
 import io.github.mhmmtbg.nodist.model.Clip
 import io.github.mhmmtbg.nodist.model.Pasted
 import io.github.mhmmtbg.nodist.model.clip
+import io.github.mhmmtbg.nodist.model.RefPoint
+import io.github.mhmmtbg.nodist.model.SameKind
+import io.github.mhmmtbg.nodist.model.TransformSpec
+import io.github.mhmmtbg.nodist.model.addArtboard
+import io.github.mhmmtbg.nodist.model.alignToRect
+import io.github.mhmmtbg.nodist.model.distributeSpacing
+import io.github.mhmmtbg.nodist.model.duplicateArtboard
+import io.github.mhmmtbg.nodist.model.fitArtboardToArtwork
+import io.github.mhmmtbg.nodist.model.frontmost
+import io.github.mhmmtbg.nodist.model.onlyArtboard
+import io.github.mhmmtbg.nodist.model.removeArtboard
+import io.github.mhmmtbg.nodist.model.renameArtboard
+import io.github.mhmmtbg.nodist.model.selectSame
+import io.github.mhmmtbg.nodist.model.setArtboardBounds
+import io.github.mhmmtbg.nodist.model.transformWith
 import io.github.mhmmtbg.nodist.model.erase
 import io.github.mhmmtbg.nodist.model.joinPaths
 import io.github.mhmmtbg.nodist.model.makeCompound
@@ -1012,8 +1027,40 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
     }
 
     fun alignSelection(mode: Align) {
-        if (state.selection.isEmpty()) return
-        commit(present.align(state.selection, mode, artboardFor(present.boundsOf(state.selection))))
+        val ids = state.selection
+        if (ids.isEmpty()) return
+        val doc = present
+        when (state.alignTarget) {
+            AlignTarget.Selection -> commit(doc.align(ids, mode, artboardFor(doc.boundsOf(ids))))
+            AlignTarget.Artboard -> {
+                val board = artboardFor(doc.boundsOf(ids)) ?: return
+                commit(doc.alignToRect(ids, mode, board))
+            }
+            AlignTarget.Key -> {
+                val key = doc.frontmost(ids)
+                val box = key?.let { doc.boundsOf(it) }
+                if (ids.size < 2 || key == null || box == null) {
+                    state = state.copy(message = tr("Anahtar nesneye hizalamak için en az iki nesne seçin"))
+                    return
+                }
+                commit(doc.alignToRect(ids, mode, box, skipId = key))
+            }
+        }
+    }
+
+    /** Hizalama hedefini sırayla değiştirir: seçim, çalışma yüzeyi, anahtar nesne. */
+    fun cycleAlignTarget() {
+        val next = AlignTarget.entries[(state.alignTarget.ordinal + 1) % AlignTarget.entries.size]
+        state = state.copy(alignTarget = next)
+    }
+
+    /** Seçili nesneleri aralarındaki boşluk [gap] olacak şekilde dizer. */
+    fun distributeWithSpacing(horizontal: Boolean, gap: Double) {
+        if (state.selection.size < 2) {
+            state = state.copy(message = tr("Dağıtmak için en az iki nesne seçin"))
+            return
+        }
+        commit(present.distributeSpacing(state.selection, horizontal, gap))
     }
 
     fun distributeSelection(horizontal: Boolean) {
@@ -1035,6 +1082,85 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
     fun releaseClippingMask() {
         val id = state.selection.singleOrNull() ?: return
         commit(present.releaseClippingMask(id))
+    }
+
+    // ---- Dönüşüm araçları ---------------------------------------------------------
+
+    /** Son uygulanan dönüşüm ("Tekrar dönüştür" bunu yeniden uygular). */
+    var lastTransform by mutableStateOf<Triple<TransformSpec, RefPoint, Boolean>?>(null)
+        private set
+
+    fun applyTransform(spec: TransformSpec, ref: RefPoint, copy: Boolean) {
+        if (state.selection.isEmpty()) return
+        val r = present.transformWith(state.selection, spec, ref, copy) ?: return
+        lastTransform = Triple(spec, ref, copy)
+        commit(r.first) { it.withSelection(r.second) }
+    }
+
+    fun repeatTransform() {
+        val t = lastTransform ?: return
+        applyTransform(t.first, t.second, t.third)
+    }
+
+    /** Seçili nesneyle aynı özelliği taşıyan görünür ve kilitsiz tüm nesneleri seçer. */
+    fun selectSimilar(kind: SameKind) {
+        val id = state.selection.firstOrNull() ?: return
+        val ids = present.selectSame(id, kind)
+        state = state.withSelection(ids).copy(message = tr("%s nesne seçildi", ids.size))
+    }
+
+    // ---- Çalışma yüzeyleri ---------------------------------------------------------
+
+    fun addArtboardCmd() {
+        val (doc, id) = present.addArtboard()
+        commit(doc) { it.copy(message = tr("Çalışma yüzeyi eklendi")) }
+        zoomToArtboard(id)
+    }
+
+    fun removeArtboardCmd(id: String) = commit(present.removeArtboard(id))
+
+    fun renameArtboardCmd(id: String, name: String) = commit(present.renameArtboard(id, name))
+
+    fun setArtboardBoundsCmd(id: String, bounds: Rect) = commit(present.setArtboardBounds(id, bounds))
+
+    fun duplicateArtboardCmd(id: String) {
+        val r = present.duplicateArtboard(id) ?: return
+        commit(r.first) { it.copy(message = tr("Çalışma yüzeyi çoğaltıldı")) }
+    }
+
+    fun fitArtboardToArtworkCmd(id: String) {
+        val doc = present.fitArtboardToArtwork(id)
+        if (doc == null) {
+            state = state.copy(message = tr("Belgede çizim yok"))
+            return
+        }
+        commit(doc)
+    }
+
+    /** Görünümü verilen çalışma yüzeyine yaklaştırır. */
+    fun zoomToArtboard(id: String) {
+        val b = present.artboards.firstOrNull { it.id == id }?.bounds ?: return
+        if (canvasSize.width <= 0 || canvasSize.height <= 0 || b.width <= 0 || b.height <= 0) return
+        fitted = false
+        val scale = (min(canvasSize.width / b.width.toFloat(), canvasSize.height / b.height.toFloat()) * 0.92f)
+            .coerceIn(Viewport.MIN_SCALE, Viewport.MAX_SCALE)
+        val c = b.center
+        viewport = Viewport(scale, Offset(canvasSize.width / 2 - c.x.toFloat() * scale, canvasSize.height / 2 - c.y.toFloat() * scale))
+    }
+
+    fun suggestedArtboardFileName(id: String, format: ExportFormat): String {
+        val name = present.artboards.firstOrNull { it.id == id }?.name?.let { trName(it) } ?: ""
+        return (present.name + " - " + name).replace(Regex("[\\/:*?\"<>|]"), "_").ifBlank { "Adsiz" } + "." + format.extension
+    }
+
+    /** Yalnızca [id] çalışma yüzeyini [format]ında [uri]'ye yazar. */
+    fun exportArtboard(id: String, uri: String, format: ExportFormat) {
+        if (state.pen != null) finishPen()
+        val doc = present.onlyArtboard(id) ?: return
+        background(tr("Dışa aktarılıyor…")) {
+            io.export(doc, uri, format)
+            withContext(Dispatchers.Main) { state = state.copy(message = tr("Çalışma yüzeyi dışa aktarıldı")) }
+        }
     }
 
     /** Makas: dokunulan yolu etkin katmanda o noktadan keser. */
