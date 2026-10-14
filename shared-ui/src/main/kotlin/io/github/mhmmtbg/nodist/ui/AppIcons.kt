@@ -46,6 +46,24 @@ object AppIcons {
             evenOdd = true,
         )
     }
+    val Scissors by lazy {
+        icon(
+            "Scissors",
+            "M9.64,7.64c0.23,-0.5 0.36,-1.05 0.36,-1.64 0,-2.21 -1.79,-4 -4,-4S2,3.79 2,6s1.79,4 4,4c0.59,0 1.14,-0.13 1.64,-0.36L10,12l-2.36,2.36" +
+                "C7.14,14.13 6.59,14 6,14c-2.21,0 -4,1.79 -4,4s1.79,4 4,4 4,-1.79 4,-4c0,-0.59 -0.13,-1.14 -0.36,-1.64L12,14l7,7h3v-1L9.64,7.64z" +
+                "M6,8c-1.1,0 -2,-0.89 -2,-2s0.9,-2 2,-2 2,0.89 2,2 -0.9,2 -2,2zM6,20c-1.1,0 -2,-0.89 -2,-2s0.9,-2 2,-2 2,0.89 2,2 -0.9,2 -2,2z" +
+                "M12,12.5c-0.28,0 -0.5,-0.22 -0.5,-0.5s0.22,-0.5 0.5,-0.5 0.5,0.22 0.5,0.5 -0.22,0.5 -0.5,0.5zM19,3l-6,6 2,2 7,-7V3z",
+        )
+    }
+    val RoundedRect by lazy {
+        icon("RoundedRect", "M7,4 H17 A3,3 0 0 1 20,7 V17 A3,3 0 0 1 17,20 H7 A3,3 0 0 1 4,17 V7 A3,3 0 0 1 7,4 Z M7,6 A1,1 0 0 0 6,7 V17 A1,1 0 0 0 7,18 H17 A1,1 0 0 0 18,17 V7 A1,1 0 0 0 17,6 Z", evenOdd = true)
+    }
+    val Polygon by lazy {
+        icon("Polygon", "M12,2.5 L20.5,8.7 L17.3,18.7 L6.7,18.7 L3.5,8.7 Z M12,5.3 L6.2,9.5 L8.4,16.2 L15.6,16.2 L17.8,9.5 Z", evenOdd = true)
+    }
+    val Star by lazy {
+        icon("Star", "M12,2 L14.9,8.6 L22,9.3 L16.6,14 L18.2,21 L12,17.3 L5.8,21 L7.4,14 L2,9.3 L9.1,8.6 Z")
+    }
     val Rectangle by lazy { icon("Rectangle", "M3,5 H21 V19 H3 Z M5,7 V17 H19 V7 Z", evenOdd = true) }
     val Ellipse by lazy {
         icon("Ellipse", "M12,4 A8,8 0 1 0 12,20 A8,8 0 1 0 12,4 Z M12,6 A6,6 0 1 1 12,18 A6,6 0 1 1 12,6 Z", evenOdd = true)
@@ -201,6 +219,9 @@ object AppIcons {
     val Intersect by lazy { icon("Intersect", frame(3.0, 3.0, 13.0, 13.0, 1.5) + frame(8.0, 8.0, 13.0, 13.0, 1.5) + r(9.5, 9.5, 5, 5)) }
     val Exclude by lazy { icon("Exclude", r(3, 3, 13, 13) + r(8, 8, 13, 13), evenOdd = true) }
     val Mask by lazy { icon("Mask", r(3, 3, 18, 18) + circle(12, 12.0, 6), evenOdd = true) }
+    val Compound by lazy { icon("Compound", r(3, 3, 18, 18) + r(8, 8, 8, 8), evenOdd = true) }
+    val Release by lazy { icon("Release", frame(3.0, 3.0, 18.0, 18.0, 1.5) + r(8, 8, 8, 8)) }
+    val Join by lazy { icon("Join", "M3,15 L3,12 L11,12 L11,8 L16,12 L21,12 L21,15 L14,15 L14,19 L9,15 Z") }
     val Unmask by lazy { icon("Unmask", frame(3.0, 3.0, 18.0, 18.0, 1.5) + circle(12, 12.0, 6) + circle(12, 12.0, 4.5), evenOdd = true) }
     val Transform by lazy {
         icon("Transform", frame(5.0, 5.0, 14.0, 14.0, 1.5) + r(3, 3, 5, 5) + r(16, 3, 5, 5) + r(3, 16, 5, 5) + r(16, 16, 5, 5))

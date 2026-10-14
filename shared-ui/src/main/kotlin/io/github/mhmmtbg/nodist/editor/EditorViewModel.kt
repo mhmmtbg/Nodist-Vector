@@ -53,6 +53,11 @@ import io.github.mhmmtbg.nodist.model.Clip
 import io.github.mhmmtbg.nodist.model.Pasted
 import io.github.mhmmtbg.nodist.model.clip
 import io.github.mhmmtbg.nodist.model.erase
+import io.github.mhmmtbg.nodist.model.joinPaths
+import io.github.mhmmtbg.nodist.model.makeCompound
+import io.github.mhmmtbg.nodist.model.pathNear
+import io.github.mhmmtbg.nodist.model.releaseCompound
+import io.github.mhmmtbg.nodist.model.scissorsCut
 import io.github.mhmmtbg.nodist.model.paste
 import io.github.mhmmtbg.nodist.model.merged
 import io.github.mhmmtbg.nodist.model.lockedNodesIn
@@ -334,6 +339,7 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
                 if (r.changed) commit(r.document) { it.copy(selection = emptySet(), layerSelection = emptySet(), nodeEdit = null) }
                 else if (r.skippedUnsupported) state = state.copy(message = tr("Metin ve görseller silgiyle silinmez; seçip Sil'e basın"))
             }
+            Tool.Scissors -> scissorsTap(p)
             Tool.Text -> state = state.copy(
                 textPrompt = TextPrompt(nodeId = null, position = p, fontSize = defaultFontSize()),
             )
@@ -504,7 +510,8 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
                 if (r.changed) state = state.copy(preview = r.document)
                 return Drag.Erase(r.document, layer.id, start, r.skippedUnsupported)
             }
-            Tool.Pencil, Tool.Rectangle, Tool.Ellipse, Tool.Line -> {
+            Tool.Scissors -> return Drag.Pan(startScreen)
+            Tool.Pencil, Tool.Rectangle, Tool.RoundedRect, Tool.Ellipse, Tool.Polygon, Tool.Star, Tool.Line -> {
                 val layer = drawingLayer() ?: run {
                     state = state.copy(message = tr("Etkin katman kilitli ya da gizli"))
                     return Drag.Pan(startScreen)
@@ -616,6 +623,28 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
                 id = d.nodeId, name = tr("Elips"), subpaths = listOf(Shapes.ellipse(Rect.of(d.start, now))),
                 fill = fill, stroke = stroke, opacity = s.opacity,
             )
+            Tool.RoundedRect -> {
+                val box = Rect.of(d.start, now)
+                PathNode(
+                    id = d.nodeId, name = tr("Yuvarlak dikdörtgen"),
+                    subpaths = listOf(Shapes.roundedRect(box, minOf(box.width, box.height) * s.cornerRatio)),
+                    fill = fill, stroke = stroke, opacity = s.opacity,
+                )
+            }
+            Tool.Polygon, Tool.Star -> {
+                // Merkez ilk dokunuş, yarıçap ve ilk köşenin yönü parmağın konumudur.
+                val radius = d.start.distanceTo(now).coerceAtLeast(0.5)
+                val angle = atan2(now.y - d.start.y, now.x - d.start.x)
+                val shape = if (s.tool == Tool.Polygon) {
+                    Shapes.polygon(d.start, radius, s.polygonSides, angle)
+                } else {
+                    Shapes.star(d.start, radius, radius * s.starInner, s.starPoints, angle)
+                }
+                PathNode(
+                    id = d.nodeId, name = tr(if (s.tool == Tool.Polygon) "Çokgen" else "Yıldız"),
+                    subpaths = listOf(shape), fill = fill, stroke = stroke, opacity = s.opacity,
+                )
+            }
             else -> PathNode(
                 id = d.nodeId, name = tr("Dikdörtgen"), subpaths = listOf(Shapes.rect(Rect.of(d.start, now))),
                 fill = fill, stroke = stroke, opacity = s.opacity,
@@ -1006,6 +1035,74 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
     fun releaseClippingMask() {
         val id = state.selection.singleOrNull() ?: return
         commit(present.releaseClippingMask(id))
+    }
+
+    /** Makas: dokunulan yolu etkin katmanda o noktadan keser. */
+    private fun scissorsTap(p: Vec2) {
+        val layer = drawingLayer() ?: run {
+            state = state.copy(message = tr("Etkin katman kilitli ya da gizli"))
+            return
+        }
+        val doc = present
+        val id = doc.pathNear(layer.id, p, tolerance())
+        val cut = id?.let { doc.scissorsCut(it, p, tolerance()) }
+        if (cut == null) {
+            state = state.copy(message = tr("Kesmek için bir yolun üzerine dokunun"))
+            return
+        }
+        commit(cut.first) { it.withSelection(cut.second.toSet()) }
+    }
+
+    /** Seçili yolları bileşik yola çevirir (içteki şekiller delik olur). */
+    fun makeCompoundPath() {
+        val r = present.makeCompound(state.selection)
+        if (r == null) {
+            state = state.copy(message = tr("Bileşik yol için en az iki yol seçin (grupları çözün, metni yola çevirin)"))
+            return
+        }
+        commit(r.first) { it.withSelection(setOf(r.second)) }
+    }
+
+    fun releaseCompoundPath() {
+        val id = state.selection.singleOrNull() ?: return
+        val r = present.releaseCompound(id)
+        if (r == null) {
+            state = state.copy(message = tr("Seçili yol bileşik yol değil"))
+            return
+        }
+        commit(r.first) { it.withSelection(r.second.toSet()) }
+    }
+
+    /** Açık yolları uçlarından birleştirir; tek açık yol seçiliyse kapatır. */
+    fun joinSelection() {
+        val r = present.joinPaths(state.selection)
+        if (r == null) {
+            state = state.copy(message = tr("Birleştirmek için açık yollar seçin"))
+            return
+        }
+        commit(r.first) { it.withSelection(setOf(r.second)) }
+    }
+
+    // ---- Şekil araçlarının ayarları ----------------------------------------
+
+    fun adjustCornerRatio(delta: Double) {
+        val v = (Math.round((state.cornerRatio + delta) * 100) / 100.0).coerceIn(0.0, 0.5)
+        state = state.copy(cornerRatio = v, message = tr("Köşe yuvarlaklığı: %s", "%" + Math.round(v * 200)))
+    }
+
+    fun adjustPolygonSides(delta: Int) {
+        val v = (state.polygonSides + delta).coerceIn(3, 24)
+        state = state.copy(polygonSides = v, message = tr("Kenar sayısı: %s", v))
+    }
+
+    fun adjustStarPoints(delta: Int) {
+        val v = (state.starPoints + delta).coerceIn(3, 24)
+        state = state.copy(starPoints = v, message = tr("Uç sayısı: %s", v))
+    }
+
+    fun adjustStarInner(delta: Double) {
+        val v = (Math.round((state.starInner + delta) * 100) / 100.0).coerceIn(0.1, 0.9)
+        state = state.copy(starInner = v, message = tr("İç yarıçap: %s", "%" + Math.round(v * 100)))
     }
 
     /** Pathfinder: seçili yolları tek bir yola dönüştürür. */

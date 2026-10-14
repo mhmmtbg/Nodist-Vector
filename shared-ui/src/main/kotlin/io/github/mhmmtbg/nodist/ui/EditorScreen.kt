@@ -94,8 +94,12 @@ private val Tools = listOf(
     ToolSpec(Tool.Pen, AppIcons.Pen, "Kalem"),
     ToolSpec(Tool.Pencil, AppIcons.Pencil, "Kurşun kalem"),
     ToolSpec(Tool.Eraser, AppIcons.Eraser, "Silgi"),
+    ToolSpec(Tool.Scissors, AppIcons.Scissors, "Makas"),
     ToolSpec(Tool.Rectangle, AppIcons.Rectangle, "Dikdörtgen"),
+    ToolSpec(Tool.RoundedRect, AppIcons.RoundedRect, "Yuvarlak dikdörtgen"),
     ToolSpec(Tool.Ellipse, AppIcons.Ellipse, "Elips"),
+    ToolSpec(Tool.Polygon, AppIcons.Polygon, "Çokgen"),
+    ToolSpec(Tool.Star, AppIcons.Star, "Yıldız"),
     ToolSpec(Tool.Line, AppIcons.Line, "Çizgi"),
     ToolSpec(Tool.Text, AppIcons.Text, "Metin"),
     ToolSpec(Tool.Eyedropper, AppIcons.Eyedropper, "Damlalık"),
@@ -487,11 +491,20 @@ private fun ContextBar(vm: EditorViewModel, modifier: Modifier, onRename: (Strin
             actions += tr("Dışla") to { mode = 0; vm.pathfinder(BooleanOp.Exclude) }
             actions += tr("Maske yap") to { mode = 0; vm.makeClippingMask() }
         }
+        state.selection.isNotEmpty() && mode == 4 -> {
+            actions += tr("‹ Geri") to { mode = 0 }
+            val nodes = state.selection.mapNotNull { doc.findNode(it) }
+            val paths = nodes.filterIsInstance<PathNode>()
+            if (paths.size >= 2) actions += tr("Bileşik yap") to { mode = 0; vm.makeCompoundPath() }
+            if (paths.size == 1 && nodes.size == 1 && paths[0].subpaths.size >= 2) actions += tr("Bileşiği çöz") to { mode = 0; vm.releaseCompoundPath() }
+            if (paths.any { p -> p.subpaths.any { !it.closed } }) actions += tr("Yolları birleştir") to { mode = 0; vm.joinSelection() }
+        }
         state.selection.isNotEmpty() -> {
             val nodes = state.selection.mapNotNull { doc.findNode(it) }
             val single = nodes.singleOrNull()
             actions += tr("Hizala") to { mode = 1 }
             if (nodes.size >= 2) actions += tr("Şekil") to { mode = 2 }
+            if (nodes.any { it is PathNode }) actions += tr("Yol") to { mode = 4 }
             actions += tr("Dönüştür") to onTransform
             if (single is GroupNode && single.clip != null) actions += tr("Maskeyi bırak") to vm::releaseClippingMask
             if (single is ImageNode) actions += tr("Vektöre çevir") to vm::startTrace
@@ -513,6 +526,26 @@ private fun ContextBar(vm: EditorViewModel, modifier: Modifier, onRename: (Strin
             actions += tr("Katmanda göster") to vm::revealSelectionInLayers
             actions += tr("Dışa aktar…") to onExport
             if (single != null) actions += tr("Adlandır") to { onRename(single.id) }
+        }
+    }
+    if (state.pen == null && mode == 0) {
+        // Şekil araçlarının ayarları; şekil çizildikten sonra seçili iken de değiştirilebilir (bir sonraki şekil için).
+        when (state.tool) {
+            Tool.RoundedRect -> {
+                actions.add(0, tr("Köşe +") to { vm.adjustCornerRatio(0.05) })
+                actions.add(0, tr("Köşe −") to { vm.adjustCornerRatio(-0.05) })
+            }
+            Tool.Polygon -> {
+                actions.add(0, tr("Kenar +") to { vm.adjustPolygonSides(1) })
+                actions.add(0, tr("Kenar −") to { vm.adjustPolygonSides(-1) })
+            }
+            Tool.Star -> {
+                actions.add(0, tr("İç +") to { vm.adjustStarInner(0.1) })
+                actions.add(0, tr("İç −") to { vm.adjustStarInner(-0.1) })
+                actions.add(0, tr("Uç +") to { vm.adjustStarPoints(1) })
+                actions.add(0, tr("Uç −") to { vm.adjustStarPoints(-1) })
+            }
+            else -> {}
         }
     }
     if (actions.isEmpty()) return
@@ -612,6 +645,8 @@ private val ActionIcons: Map<String, ImageVector> by lazy {
         "Şişkin" to AppIcons.Bulge, "Yükselen" to AppIcons.Rise,
         "Birleştir" to AppIcons.Unite, "Öndekini çıkar" to AppIcons.MinusFront, "Kesiştir" to AppIcons.Intersect,
         "Dışla" to AppIcons.Exclude, "Maske yap" to AppIcons.Mask, "Maskeyi bırak" to AppIcons.Unmask,
+        "Bileşik yap" to AppIcons.Compound, "Bileşiği çöz" to AppIcons.Release, "Yolları birleştir" to AppIcons.Join,
+        "Yol" to AppIcons.Nodes,
         "Hizala" to AppIcons.AlignLeft, "Şekil" to AppIcons.Shapes, "Dönüştür" to AppIcons.Transform,
         "Vektöre çevir" to AppIcons.Picture, "Metni düzenle" to AppIcons.Pencil, "Eğ" to AppIcons.Arc, "Yola çevir" to AppIcons.Nodes,
         "Kopyala" to AppIcons.Copy, "Kes" to AppIcons.Cut, "Yapıştır" to AppIcons.Paste, "Çoğalt" to AppIcons.Duplicate,
@@ -740,8 +775,18 @@ private fun formatWidth(w: Double): String {
 @Composable
 private fun ToolRow(vm: EditorViewModel) {
     val active = vm.state.tool
-    Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp)) {
-        for (t in Tools) ToolButton(t, active == t.tool, Modifier.weight(1f).height(46.dp)) { vm.selectTool(t.tool) }
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        // Araçlar sığmazsa şerit yana kaydırılır; seçili araç görünür kalır.
+        val fits = maxWidth / Tools.size >= 40.dp
+        val scroll = rememberScrollState()
+        Row(
+            Modifier.fillMaxWidth().then(if (fits) Modifier else Modifier.horizontalScroll(scroll)).padding(horizontal = 4.dp, vertical = 2.dp),
+        ) {
+            for (t in Tools) {
+                val m = if (fits) Modifier.weight(1f) else Modifier.width(44.dp)
+                ToolButton(t, active == t.tool, m.height(46.dp)) { vm.selectTool(t.tool) }
+            }
+        }
     }
 }
 

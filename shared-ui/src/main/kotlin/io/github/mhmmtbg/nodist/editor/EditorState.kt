@@ -17,9 +17,10 @@ import io.github.mhmmtbg.nodist.model.Vec2
 
 /**
  * [Hand]: yalnızca tuvali kaydırır; dokunuş hiçbir şeyi seçmez ya da çizmez.
- * [Eraser]: dokunulan ya da üzerinden sürüklenen nesneleri siler (nesne silgisi); tek geri alma adımıdır.
+ * [Eraser]: dokunulan ya da üzerinden sürüklenen yerleri siler; tek geri alma adımıdır.
+ * [Scissors]: dokunulan yolu o noktadan keser. [RoundedRect], [Polygon], [Star]: ek şekil araçları.
  */
-enum class Tool { Select, Direct, Pen, Pencil, Eraser, Rectangle, Ellipse, Line, Text, Eyedropper, Hand }
+enum class Tool { Select, Direct, Pen, Pencil, Eraser, Scissors, Rectangle, RoundedRect, Ellipse, Polygon, Star, Line, Text, Eyedropper, Hand }
 
 /** Kontur çizgi türü; aralıklar kalınlığa oranlıdır. */
 enum class DashStyle(val pattern: List<Double>) {
@@ -147,6 +148,13 @@ data class EditorState(
     val strokeJoin: LineJoin = LineJoin.Miter,
     val dashStyle: DashStyle = DashStyle.Solid,
     val opacity: Double = 1.0,
+    /** Yuvarlatılmış dikdörtgenin köşe yarıçapı: kısa kenarın oranı (0..0,5). */
+    val cornerRatio: Double = 0.2,
+    /** Çokgen aracının kenar sayısı. */
+    val polygonSides: Int = 6,
+    /** Yıldız aracının uç sayısı ve iç yarıçapının dış yarıçapa oranı. */
+    val starPoints: Int = 5,
+    val starInner: Double = 0.5,
     /** Nesneleri taşırken ve çizerken kenarlara ve ortalara yapışma. */
     val snapping: Boolean = true,
     /** Sürükleme sırasında gösterilen akıllı kılavuzlar. */

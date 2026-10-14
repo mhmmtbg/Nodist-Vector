@@ -44,9 +44,12 @@ class L10nTest {
     @Test
     fun noKeyIsDefinedTwice() {
         // Aynı Türkçe metin iki kez tanımlanırsa sonraki, öncekini sessizce ezer ve başka bir ekranın çevirisi bozulur.
-        val source = java.io.File("src/main/kotlin/io/github/mhmmtbg/nodist/model/L10n.kt")
-            .takeIf { it.isFile } ?: java.io.File("core-model/src/main/kotlin/io/github/mhmmtbg/nodist/model/L10n.kt")
-        val keys = Regex("""^\s*"((?:[^"\\]|\\.)*)" to """, RegexOption.MULTILINE).findAll(source.readText()).map { it.groupValues[1] }.toList()
+        val dir = java.io.File("src/main/kotlin/io/github/mhmmtbg/nodist/model").takeIf { it.isDirectory }
+            ?: java.io.File("core-model/src/main/kotlin/io/github/mhmmtbg/nodist/model")
+        val files = dir.listFiles { f -> f.name.startsWith("L10n") && f.name.endsWith(".kt") }!!
+        val keys = files.flatMap { f ->
+            Regex("""^\s*"((?:[^"\\]|\\.)*)" to """, RegexOption.MULTILINE).findAll(f.readText()).map { it.groupValues[1] }.toList()
+        }
         assertEquals(emptyList(), keys.groupingBy { it }.eachCount().filter { it.value > 1 }.keys.toList())
     }
 }

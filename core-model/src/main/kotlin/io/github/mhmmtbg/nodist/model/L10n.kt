@@ -393,7 +393,7 @@ object L10n {
         "Tasarımdaki renk kodlarını güncelle" to "Update colour codes in the design",
         "Güncellenecek renk kodu yok" to "No colour codes to update",
         "%s renk kodu güncellendi" to "%s colour codes updated",
-    )
+    ) + FeatureStrings
 }
 
 /** Metni geçerli dile çevirir; [args] varsa `%s` yer tutucularına sırayla yerleştirilir. */
@@ -417,7 +417,8 @@ fun trName(name: String): String {
         "Adsız" -> "Untitled"
         "İz" -> "Trace"
         "Kırpma grubu" -> "Clip group"
-        "Yol", "Grup", "Görsel", "Metin", "Dikdörtgen", "Elips", "Çizgi" -> L10n.translate(name)
+        "Yol", "Grup", "Görsel", "Metin", "Dikdörtgen", "Elips", "Çizgi",
+        "Yuvarlak dikdörtgen", "Çokgen", "Yıldız", "Bileşik yol" -> L10n.translate(name)
         else -> name
     }
 }
