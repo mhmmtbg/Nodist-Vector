@@ -9,6 +9,10 @@ import androidx.compose.ui.test.pinch
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.mhmmtbg.nodist.editor.EditorViewModel
+import io.github.mhmmtbg.nodist.editor.Tool
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.assertCountEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -39,7 +43,7 @@ class GestureTest {
         settle()
         val vm = vm()
         // Çizim aracı seçiliyken bile iki parmak yalnızca görünümü değiştirmeli.
-        rule.onNodeWithContentDescription("Dikdörtgen").performClick()
+        rule.runOnUiThread { vm.selectTool(Tool.Rectangle) }
         rule.waitForIdle()
         val before = vm.viewport
         val nodesBefore = vm.state.history.present.layers.sumOf { it.children.size }
@@ -96,7 +100,7 @@ class GestureTest {
     fun secondFingerCancelsAnInProgressShape() {
         settle()
         val vm = vm()
-        rule.onNodeWithContentDescription("Dikdörtgen").performClick()
+        rule.runOnUiThread { vm.selectTool(Tool.Rectangle) }
         rule.waitForIdle()
         rule.onNodeWithContentDescription("Tuval").performTouchInput {
             val c = center
@@ -112,5 +116,21 @@ class GestureTest {
         assertEquals(0, vm.state.history.present.layers.sumOf { it.children.size })
         assertEquals(null, vm.state.preview)
         assertFalse(vm.state.history.canUndo)
+    }
+
+    @Test
+    fun shapesMenuListsEveryShapeAndSelectsOne() {
+        settle()
+        val vm = vm()
+        rule.onNodeWithContentDescription("Şekiller").performClick()
+        rule.waitForIdle()
+        for (name in listOf("Dikdörtgen", "Yuvarlak dikdörtgen", "Elips", "Çokgen", "Yıldız", "Çizgi")) {
+            rule.onNodeWithText(name).assertExists()
+        }
+        rule.onNodeWithText("Yıldız").performClick()
+        rule.waitForIdle()
+        assertEquals(Tool.Star, vm.state.tool)
+        // Menü kapanmış olmalı.
+        rule.onAllNodesWithText("Çokgen").assertCountEquals(0)
     }
 }
