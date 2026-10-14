@@ -99,6 +99,8 @@ class EraseTest {
         assertTrue(r.changed)
         val node = r.document.findLayer("L")!!.children.single() as PathNode
         assertTrue(node.stroke == null)
+        // Kalan şekil tek parça: kenarları ortak parçalar (aralarında ince çizgi bırakan) olmamalı.
+        assertEquals(1, node.subpaths.size)
         val total = node.subpaths.sumOf { area(it) }
         // Karenin 10000 alanından kenardaki yarım dairenin (≈157) çıkması beklenir.
         assertTrue(total > 9800 && total < 9900, "alan $total")

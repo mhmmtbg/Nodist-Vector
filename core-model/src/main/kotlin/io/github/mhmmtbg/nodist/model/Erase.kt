@@ -313,20 +313,165 @@ private fun cutFill(sp: SubPath, capsule: List<Vec2>, r: Double): List<SubPath>?
     return pieces.map { pts -> SubPath(pts.map { Anchor(it) }, closed = true) }
 }
 
+private class Crossing(val si: Int, val t: Double, val cj: Int, val u: Double, val point: Vec2, val entering: Boolean) {
+    val sPos: Double get() = si + t
+    val cPos: Double get() = cj + u
+}
+
+private fun cross2(ax: Double, ay: Double, bx: Double, by: Double) = ax * by - ay * bx
+
+private fun insideConvex(p: Vec2, c: List<Vec2>): Boolean {
+    for (j in c.indices) {
+        val a = c[j]
+        val b = c[(j + 1) % c.size]
+        if (cross2(b.x - a.x, b.y - a.y, p.x - a.x, p.y - a.y) < 0) return false
+    }
+    return true
+}
+
+private fun insidePolygon(p: Vec2, poly: List<Vec2>): Boolean {
+    var inside = false
+    for (i in poly.indices) {
+        val a = poly[i]
+        val b = poly[(i + 1) % poly.size]
+        if ((a.y > p.y) != (b.y > p.y)) {
+            val x = a.x + (p.y - a.y) / (b.y - a.y) * (b.x - a.x)
+            if (x > p.x) inside = !inside
+        }
+    }
+    return inside
+}
+
+/** [from]..[to] konumları arasında (döngüsel, ileri yönde) kalan köşeler. */
+private fun verticesBetween(from: Double, to: Double, pts: List<Vec2>): List<Vec2> {
+    val n = pts.size
+    val k = kotlin.math.floor(from).toInt() + 1
+    val end = kotlin.math.floor(to).toInt()
+    val out = ArrayList<Vec2>()
+    if (to > from) {
+        for (i in k..end) out += pts[i % n]
+    } else {
+        for (i in k until n) out += pts[i]
+        for (i in 0..end) out += pts[i]
+    }
+    return out
+}
+
+/** [from] konumundan [to] konumuna (döngüsel, geri yönde) giderken geçilen köşeler. */
+private fun verticesBackwards(from: Double, to: Double, pts: List<Vec2>): List<Vec2> {
+    val n = pts.size
+    val k = kotlin.math.floor(from).toInt()
+    val stop = kotlin.math.floor(to).toInt() + 1
+    val out = ArrayList<Vec2>()
+    if (to < from) {
+        for (i in k downTo stop) out += pts[i]
+    } else {
+        for (i in k downTo 0) out += pts[i]
+        for (i in n - 1 downTo stop) out += pts[i]
+    }
+    return out
+}
+
 /**
- * [subject] çokgeninden dışbükey [clip] çokgenini çıkarır (Sutherland-Hodgman, kenar kenar).
- * Kesişim yoksa `null`; aksi halde birbirine değmeyen kalan parçalar.
+ * [subject] çokgeninden dışbükey [clip] çokgenini çıkarır; kalan şeklin sınırı, kesişim noktalarından birleştirilerek
+ * parçalanmadan (kenar kenar ortak parçalar olmadan) verilir. Kesişim yoksa `null`; tamamen silindiyse boş liste;
+ * silgi şeklin içinde kalırsa dış sınır ve ters yönlü bir delik. Yönü [subject] ile aynı kalır.
  */
 private fun subtractConvex(subject: List<Vec2>, clip: List<Vec2>, minArea: Double): List<List<Vec2>>? {
-    val o = if (polygonArea(clip) >= 0) 1.0 else -1.0
+    val sa = polygonArea(subject)
+    if (abs(sa) <= minArea) return null
+    val sCcw = sa > 0
+    val s = if (sCcw) subject else subject.reversed()
+    var c = ArrayList<Vec2>()
+    for (p in clip) if (c.isEmpty() || c.last().distanceTo(p) > 1e-12) c += p
+    if (c.size > 1 && c.first().distanceTo(c.last()) <= 1e-12) c.removeAt(c.lastIndex)
+    if (c.size < 3) return null
+    if (polygonArea(c) < 0) c = ArrayList(c.reversed())
+    // Silgiyi çok az kaydır: kenar ya da köşelerin tam üst üste bindiği özel durumlar oluşmasın.
+    val w = (c.maxOf { it.x } - c.minOf { it.x }).coerceAtLeast(1e-9)
+    c = ArrayList(c.map { Vec2(it.x + w * 1.3e-7, it.y + w * 0.9e-7) })
+
+    fun orient(rings: List<List<Vec2>>) = if (sCcw) rings else rings.map { it.reversed() }
+    fun fallback() = subtractConvexPieces(subject, c, minArea)
+
+    val n = s.size
+    val m = c.size
+    val xs = ArrayList<Crossing>()
+    for (i in 0 until n) {
+        val s0 = s[i]
+        val s1 = s[(i + 1) % n]
+        val d1x = s1.x - s0.x
+        val d1y = s1.y - s0.y
+        for (j in 0 until m) {
+            val c0 = c[j]
+            val c1 = c[(j + 1) % m]
+            val d2x = c1.x - c0.x
+            val d2y = c1.y - c0.y
+            val den = cross2(d1x, d1y, d2x, d2y)
+            if (abs(den) < 1e-18) continue
+            val wx = c0.x - s0.x
+            val wy = c0.y - s0.y
+            val t = cross2(wx, wy, d2x, d2y) / den
+            val u = cross2(wx, wy, d1x, d1y) / den
+            if (t >= 0 && t < 1 && u >= 0 && u < 1) {
+                xs += Crossing(i, t, j, u, Vec2(s0.x + d1x * t, s0.y + d1y * t), entering = cross2(d2x, d2y, d1x, d1y) > 0)
+            }
+        }
+    }
+    if (xs.isEmpty()) {
+        if (insideConvex(s[0], c)) return emptyList()
+        if (insidePolygon(c[0], s)) return orient(listOf(s, c.reversed()))
+        return null
+    }
+    if (xs.size % 2 != 0) return fallback()
+
+    val sOrder = xs.indices.sortedBy { xs[it].sPos }
+    val cOrder = xs.indices.sortedBy { xs[it].cPos }
+    val sRank = IntArray(xs.size).also { r -> sOrder.forEachIndexed { rank, k -> r[k] = rank } }
+    val cRank = IntArray(xs.size).also { r -> cOrder.forEachIndexed { rank, k -> r[k] = rank } }
+    val used = BooleanArray(xs.size)
+    val rings = ArrayList<List<Vec2>>()
+    for (start in sOrder) {
+        if (xs[start].entering || used[start]) continue
+        val ring = ArrayList<Vec2>()
+        var cur = start
+        var guard = 0
+        while (true) {
+            if (++guard > xs.size + 2) return fallback()
+            used[cur] = true
+            ring += xs[cur].point
+            // Silginin dışında kalan sınırı izle: bir sonraki kesişim silgiye giriştir.
+            val next = sOrder[(sRank[cur] + 1) % xs.size]
+            if (!xs[next].entering) return fallback()
+            ring += verticesBetween(xs[cur].sPos, xs[next].sPos, s)
+            ring += xs[next].point
+            // Silgi sınırını ters yönde izle: bir sonraki kesişim silgiden çıkıştır.
+            val target = cOrder[(cRank[next] - 1 + xs.size) % xs.size]
+            if (xs[target].entering) return fallback()
+            ring += verticesBackwards(xs[next].cPos, xs[target].cPos, c)
+            cur = target
+            if (cur == start) break
+        }
+        rings += ring
+    }
+    val kept = rings.filter { abs(polygonArea(it)) > minArea }
+    return orient(kept)
+}
+
+/**
+ * Yedek yöntem (kesişim eşlemesi tutarsız çıkarsa): kenar kenar kesip birbirine değen parçalar verir.
+ * Alan doğrudur ama parçalar tek şekil olarak birleşmez.
+ */
+private fun subtractConvexPieces(subject: List<Vec2>, clip: List<Vec2>, minArea: Double): List<List<Vec2>>? {
     var rest = subject
     val pieces = ArrayList<List<Vec2>>()
     for (i in clip.indices) {
         val p = clip[i]
         val q = clip[(i + 1) % clip.size]
-        val outside = clipHalf(rest, p, q, o, keepInside = false)
+        if (p.distanceTo(q) < 1e-12) continue
+        val outside = clipHalf(rest, p, q, 1.0, keepInside = false)
         if (outside.size >= 3 && abs(polygonArea(outside)) > minArea) pieces += outside
-        rest = clipHalf(rest, p, q, o, keepInside = true)
+        rest = clipHalf(rest, p, q, 1.0, keepInside = true)
         if (rest.size < 3) return null
     }
     return if (abs(polygonArea(rest)) > minArea) pieces else null
