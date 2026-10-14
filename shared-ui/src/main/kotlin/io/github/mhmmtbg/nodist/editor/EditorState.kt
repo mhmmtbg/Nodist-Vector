@@ -18,9 +18,9 @@ import io.github.mhmmtbg.nodist.model.Vec2
 /**
  * [Hand]: yalnızca tuvali kaydırır; dokunuş hiçbir şeyi seçmez ya da çizmez.
  * [Eraser]: dokunulan ya da üzerinden sürüklenen yerleri siler; tek geri alma adımıdır.
- * [Scissors]: dokunulan yolu o noktadan keser. [RoundedRect], [Polygon], [Star]: ek şekil araçları.
+ * [Scissors]: dokunulan yolu o noktadan keser. [Knife]: sürüklenen çizgi boyunca dolgulu şekilleri ikiye böler. [RoundedRect], [Polygon], [Star]: ek şekil araçları.
  */
-enum class Tool { Select, Direct, Pen, Pencil, Eraser, Scissors, Rectangle, RoundedRect, Ellipse, Polygon, Star, Line, Text, Eyedropper, Hand }
+enum class Tool { Select, Direct, Pen, Pencil, Eraser, Scissors, Knife, Rectangle, RoundedRect, Ellipse, Polygon, Star, Line, Text, Eyedropper, Hand }
 
 /** Kontur çizgi türü; aralıklar kalınlığa oranlıdır. */
 enum class DashStyle(val pattern: List<Double>) {
@@ -175,6 +175,8 @@ data class EditorState(
     val pen: PenState? = null,
     /** Seçim çerçevesi (belge koordinatı). */
     val marquee: Rect? = null,
+    /** Bıçak aracının sürüklenen çizgisi (belge koordinatı). */
+    val knifeLine: Pair<Vec2, Vec2>? = null,
     val layersOpen: Boolean = false,
     /** Katman panelinde açık duran katman ve grupların kimlikleri. */
     val expanded: Set<String> = emptySet(),

@@ -127,6 +127,7 @@ private fun handleShortcut(event: KeyEvent, vm: EditorViewModel, host: DesktopHo
         Key.N -> vm.selectTool(Tool.Pencil)
         Key.E -> vm.selectTool(Tool.Eraser)
         Key.C -> vm.selectTool(Tool.Scissors)
+        Key.K -> vm.selectTool(Tool.Knife)
         Key.M -> vm.selectTool(Tool.Rectangle)
         Key.Q -> vm.selectTool(Tool.RoundedRect)
         Key.Y -> vm.selectTool(Tool.Polygon)

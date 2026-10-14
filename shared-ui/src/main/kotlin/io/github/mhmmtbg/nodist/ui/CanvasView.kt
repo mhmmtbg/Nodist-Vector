@@ -353,6 +353,13 @@ fun CanvasView(vm: EditorViewModel, modifier: Modifier = Modifier) {
 
             if (state.showRulers) drawRulers(viewport, textMeasurer, rulerPx)
 
+            state.knifeLine?.let { (a, b) ->
+                drawLine(
+                    AppColors.Selection, viewport.toScreen(a), viewport.toScreen(b), 1.5.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx())),
+                )
+            }
+
             state.marquee?.let { m ->
                 val tl = viewport.toScreen(Vec2(m.left, m.top))
                 val size = Size((m.width * viewport.scale).toFloat(), (m.height * viewport.scale).toFloat())

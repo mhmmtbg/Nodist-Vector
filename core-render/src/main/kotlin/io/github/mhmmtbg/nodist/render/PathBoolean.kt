@@ -5,6 +5,8 @@ import androidx.graphics.path.PathSegment
 import io.github.mhmmtbg.nodist.model.Anchor
 import io.github.mhmmtbg.nodist.model.FillRule
 import io.github.mhmmtbg.nodist.model.PathNode
+import io.github.mhmmtbg.nodist.model.Region
+import io.github.mhmmtbg.nodist.model.RegionOps
 import io.github.mhmmtbg.nodist.model.SubPath
 import io.github.mhmmtbg.nodist.model.Vec2
 import kotlin.math.abs
@@ -120,4 +122,20 @@ object PathBoolean {
         flush()
         return out
     }
+}
+
+/** Bölgeler üzerinde Skia yol işlemleri (Böl, kontur ana hattı, öteleme için). */
+object SkiaRegionOps : RegionOps {
+    private fun path(r: Region) = AndroidPath().also { DocumentRenderer.fillPath(it, r.subpaths, r.rule) }
+
+    private fun run(a: Region, b: Region, op: AndroidPath.Op): Region? {
+        val acc = path(a)
+        if (!acc.op(path(b), op)) return null
+        val rule = if (acc.fillType == AndroidPath.FillType.EVEN_ODD || acc.fillType == AndroidPath.FillType.INVERSE_EVEN_ODD) FillRule.EvenOdd else FillRule.NonZero
+        return Region(PathBoolean.toSubPaths(acc), rule)
+    }
+
+    override fun intersect(a: Region, b: Region) = run(a, b, AndroidPath.Op.INTERSECT)
+    override fun minus(a: Region, b: Region) = run(a, b, AndroidPath.Op.DIFFERENCE)
+    override fun union(a: Region, b: Region) = run(a, b, AndroidPath.Op.UNION)
 }

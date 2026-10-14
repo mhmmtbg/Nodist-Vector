@@ -109,4 +109,15 @@ internal val FeatureStrings: Map<String, String> = mapOf(
     "Rengi değiştirmek, belgede o rengi kullanan her yeri de değiştirir." to "Changing the colour also changes every place in the document that uses it.",
     "Seçili rengi ekle" to "Add current colour",
     "Belgedeki renkleri ekle" to "Add document colours",
+    // Kontur ana hattı, öteleme, bıçak, böl
+    "Bıçak" to "Knife",
+    "Çizgi hiçbir dolgulu, kapalı şekli kesmedi" to "The line did not cut any filled, closed shape",
+    "Konturlu bir yol seçin" to "Select a path that has a stroke",
+    "Ötelenemedi: kapalı bir yol seçin" to "Could not offset: select a closed path",
+    "Bölmek için en az iki yol seçin (metni önce yola çevirin, grubu çözün)" to "Select at least two paths to divide (convert text to outlines and ungroup first)",
+    "Yolu ötele" to "Offset path",
+    "Mesafe (negatif küçültür)" to "Distance (negative shrinks)",
+    "Kontur ana hattı" to "Outline stroke",
+    "Yolu ötele…" to "Offset path…",
+    "Böl" to "Divide",
 )

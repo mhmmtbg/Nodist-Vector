@@ -109,6 +109,7 @@ private val Tools = listOf(
  */
 private val ExtraTools = listOf(
     ToolSpec(Tool.Scissors, AppIcons.Scissors, "Makas"),
+    ToolSpec(Tool.Knife, AppIcons.Knife, "Bıçak"),
     ToolSpec(Tool.RoundedRect, AppIcons.RoundedRect, "Yuvarlak dikdörtgen"),
     ToolSpec(Tool.Polygon, AppIcons.Polygon, "Çokgen"),
     ToolSpec(Tool.Star, AppIcons.Star, "Yıldız"),
@@ -527,6 +528,14 @@ private fun ContextBar(
     val actions = ArrayList<Pair<String, () -> Unit>>()
     // Alt menüler: "Hizala" ve "Şekil" eylemleri aynı satırda açılır.
     var mode by remember { mutableStateOf(0) }
+    var offsetDialog by remember { mutableStateOf(false) }
+    if (offsetDialog) {
+        NumberDialog(tr("Yolu ötele"), tr("Mesafe (negatif küçültür)"), 10.0, onDismiss = { offsetDialog = false }) { v ->
+            offsetDialog = false
+            mode = 0
+            vm.offsetPathCmd(v)
+        }
+    }
     if (state.selection.isEmpty() && mode != 0) mode = 0
     val doc = state.history.present
     val edit = state.nodeEdit
@@ -592,6 +601,9 @@ private fun ContextBar(
             if (paths.size >= 2) actions += tr("Bileşik yap") to { mode = 0; vm.makeCompoundPath() }
             if (paths.size == 1 && nodes.size == 1 && paths[0].subpaths.size >= 2) actions += tr("Bileşiği çöz") to { mode = 0; vm.releaseCompoundPath() }
             if (paths.any { p -> p.subpaths.any { !it.closed } }) actions += tr("Yolları birleştir") to { mode = 0; vm.joinSelection() }
+            if (paths.any { it.stroke != null }) actions += tr("Kontur ana hattı") to { mode = 0; vm.outlineStrokeCmd() }
+            if (paths.any { p -> p.subpaths.any { it.closed } }) actions += tr("Yolu ötele…") to { offsetDialog = true }
+            if (paths.size >= 2 && paths.size == nodes.size) actions += tr("Böl") to { mode = 0; vm.divideCmd() }
         }
         state.selection.isNotEmpty() -> {
             val nodes = state.selection.mapNotNull { doc.findNode(it) }
@@ -743,6 +755,7 @@ private val ActionIcons: Map<String, ImageVector> by lazy {
         "Şişkin" to AppIcons.Bulge, "Yükselen" to AppIcons.Rise,
         "Birleştir" to AppIcons.Unite, "Öndekini çıkar" to AppIcons.MinusFront, "Kesiştir" to AppIcons.Intersect,
         "Dışla" to AppIcons.Exclude, "Maske yap" to AppIcons.Mask, "Maskeyi bırak" to AppIcons.Unmask,
+        "Kontur ana hattı" to AppIcons.Outline, "Yolu ötele…" to AppIcons.Offset, "Böl" to AppIcons.Divide,
         "Bileşik yap" to AppIcons.Compound, "Bileşiği çöz" to AppIcons.Release, "Yolları birleştir" to AppIcons.Join,
         "Yol" to AppIcons.Nodes, "Dönüşüm araçları…" to AppIcons.Transform, "Tekrar dönüştür" to AppIcons.Transform,
         "Aynısını seç…" to AppIcons.Select, "Kenarlara kılavuz" to AppIcons.Shapes,

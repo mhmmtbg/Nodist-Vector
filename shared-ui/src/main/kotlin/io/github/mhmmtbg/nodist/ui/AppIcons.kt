@@ -55,6 +55,18 @@ object AppIcons {
                 "M12,12.5c-0.28,0 -0.5,-0.22 -0.5,-0.5s0.22,-0.5 0.5,-0.5 0.5,0.22 0.5,0.5 -0.22,0.5 -0.5,0.5zM19,3l-6,6 2,2 7,-7V3z",
         )
     }
+    val Knife by lazy {
+        icon("Knife", "M3,20.5 L14.5,3.5 C16.8,3.9 19.6,6.4 20.5,9 L6.5,21 Z M7,17.5 L8.6,18.8 L16.5,8.2 L15,6.9 Z", evenOdd = true)
+    }
+    val Outline by lazy {
+        icon("Outline", "M4,4 H20 V20 H4 Z M7,7 V17 H17 V7 Z M10,10 H14 V14 H10 Z", evenOdd = true)
+    }
+    val Offset by lazy {
+        icon("Offset", "M3,3 H21 V21 H3 Z M5,5 V19 H19 V5 Z M8,8 H16 V16 H8 Z M10,10 V14 H14 V10 Z", evenOdd = true)
+    }
+    val Divide by lazy {
+        icon("Divide", "M3,3 H15 V15 H3 Z M9,9 H21 V21 H9 Z M5,5 V13 H9 V9 H13 V5 Z M11,11 V19 H19 V11 Z", evenOdd = true)
+    }
     val RoundedRect by lazy {
         icon("RoundedRect", "M7,4 H17 A3,3 0 0 1 20,7 V17 A3,3 0 0 1 17,20 H7 A3,3 0 0 1 4,17 V7 A3,3 0 0 1 7,4 Z M7,6 A1,1 0 0 0 6,7 V17 A1,1 0 0 0 7,18 H17 A1,1 0 0 0 18,17 V7 A1,1 0 0 0 17,6 Z", evenOdd = true)
     }

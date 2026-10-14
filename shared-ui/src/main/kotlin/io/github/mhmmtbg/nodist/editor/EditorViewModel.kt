@@ -21,6 +21,7 @@ import io.github.mhmmtbg.nodist.model.bounds
 import io.github.mhmmtbg.nodist.render.BooleanOp
 import io.github.mhmmtbg.nodist.render.DocumentRenderer
 import io.github.mhmmtbg.nodist.render.PathBoolean
+import io.github.mhmmtbg.nodist.render.SkiaRegionOps
 import io.github.mhmmtbg.nodist.model.AnchorRef
 import io.github.mhmmtbg.nodist.model.Document
 import io.github.mhmmtbg.nodist.model.GroupNode
@@ -80,7 +81,12 @@ import io.github.mhmmtbg.nodist.model.replaceSwatchColor
 import io.github.mhmmtbg.nodist.model.setGuidesLocked
 import io.github.mhmmtbg.nodist.model.erase
 import io.github.mhmmtbg.nodist.model.joinPaths
+import io.github.mhmmtbg.nodist.model.RegionOps
+import io.github.mhmmtbg.nodist.model.divideShapes
+import io.github.mhmmtbg.nodist.model.knifeCut
 import io.github.mhmmtbg.nodist.model.makeCompound
+import io.github.mhmmtbg.nodist.model.offsetPath
+import io.github.mhmmtbg.nodist.model.outlineStroke
 import io.github.mhmmtbg.nodist.model.pathNear
 import io.github.mhmmtbg.nodist.model.releaseCompound
 import io.github.mhmmtbg.nodist.model.scissorsCut
@@ -211,6 +217,8 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
         data class Erase(val work: Document, val layerId: String, val last: Vec2, val skipped: Boolean) : Drag
         /** Kılavuz çizgisi sürüklemesi: [base] sürükleme öncesi belge, [last] parmağın son ekran konumu. */
         data class GuideDrag(val id: String, val vertical: Boolean, val isNew: Boolean, val base: Document, val last: Offset) : Drag
+        /** Bıçak: çizginin başlangıcı ve çizim yapılacak katman. */
+        data class Knife(val start: Vec2, val layerId: String) : Drag
         data object PenHandle : Drag
         data class AnchorDrag(val nodeId: String, val ref: AnchorRef, val toLocal: Matrix, val origin: List<SubPath>, val start: Vec2) : Drag
         data class HandleDrag(val nodeId: String, val ref: AnchorRef, val outgoing: Boolean, val toLocal: Matrix, val origin: List<SubPath>) : Drag
@@ -424,6 +432,7 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
                 state = state.copy(preview = base.transformNodes(d.ids, m))
             }
             is Drag.Marquee -> state = state.copy(marquee = Rect.of(d.start, now))
+            is Drag.Knife -> state = state.copy(knifeLine = d.start to now)
             is Drag.Create -> {
                 var end = now
                 var guides: SnapResult? = null
@@ -498,6 +507,11 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
                 }
             }
             is Drag.Create -> state.preview?.let { p -> commit(p) { it.withSelection(setOf(d.nodeId)) } }
+            is Drag.Knife -> {
+                val line = state.knifeLine
+                state = state.copy(knifeLine = null)
+                if (line != null && line.first.distanceTo(line.second) * viewport.scale > 6) knifeCut(d.layerId, line.first, line.second)
+            }
             is Drag.Pencil -> {
                 state = state.copy(preview = null)
                 val sp = PathFit.fit(d.points, 2.0 / viewport.scale) ?: return
@@ -534,7 +548,7 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
         val d = drag
         drag = null
         if (movingIds.isNotEmpty()) movingIds = emptySet()
-        if (state.marquee != null || state.guides != null) state = state.copy(marquee = null, guides = null)
+        if (state.marquee != null || state.guides != null || state.knifeLine != null) state = state.copy(marquee = null, guides = null, knifeLine = null)
         if (d == null || d == Drag.PenHandle || state.pen != null) return
         if (state.preview != null) state = state.copy(preview = null)
     }
@@ -582,6 +596,13 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
                 return Drag.Erase(r.document, layer.id, start, r.skippedUnsupported)
             }
             Tool.Scissors -> return Drag.Pan(startScreen)
+            Tool.Knife -> {
+                val layer = drawingLayer() ?: run {
+                    state = state.copy(message = tr("Etkin katman kilitli ya da gizli"))
+                    return Drag.Pan(startScreen)
+                }
+                return Drag.Knife(start, layer.id)
+            }
             Tool.Pencil, Tool.Rectangle, Tool.RoundedRect, Tool.Ellipse, Tool.Polygon, Tool.Star, Tool.Line -> {
                 val layer = drawingLayer() ?: run {
                     state = state.copy(message = tr("Etkin katman kilitli ya da gizli"))
@@ -1315,6 +1336,62 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
             return
         }
         commit(cut.first) { it.withSelection(cut.second.toSet()) }
+    }
+
+    private fun regionOps(): RegionOps = SkiaRegionOps
+
+    private fun <T> tryOps(f: () -> T?): T? = try { f() } catch (e: Throwable) { null }
+
+    private fun knifeCut(layerId: String, a: Vec2, b: Vec2) {
+        val r = tryOps { present.knifeCut(layerId, a, b, regionOps()) }
+        if (r == null) {
+            state = state.copy(message = tr("Çizgi hiçbir dolgulu, kapalı şekli kesmedi"))
+            return
+        }
+        commit(r.first) { it.withSelection(r.second.toSet()) }
+    }
+
+    /** Seçili yolun konturunu dolu bir şekle çevirir (Kontur ana hattı). */
+    fun outlineStrokeCmd() {
+        var doc = present
+        val made = LinkedHashSet<String>()
+        val ids = state.selection.toList()
+        for (id in ids) {
+            val r = tryOps { doc.outlineStroke(id, regionOps()) } ?: continue
+            doc = r.first
+            made += r.second
+        }
+        if (made.isEmpty()) {
+            state = state.copy(message = tr("Konturlu bir yol seçin"))
+            return
+        }
+        commit(doc) { it.withSelection(made) }
+    }
+
+    /** Seçili kapalı yolları [distance] kadar öteler (pozitif büyütür, negatif küçültür). */
+    fun offsetPathCmd(distance: Double) {
+        var doc = present
+        val made = LinkedHashSet<String>()
+        for (id in state.selection.toList()) {
+            val r = tryOps { doc.offsetPath(id, distance, regionOps()) } ?: continue
+            doc = r.first
+            made += r.second
+        }
+        if (made.isEmpty()) {
+            state = state.copy(message = tr("Ötelenemedi: kapalı bir yol seçin"))
+            return
+        }
+        commit(doc) { it.withSelection(made) }
+    }
+
+    /** Seçili şekilleri örtüşmeyen parçalara böler (Böl). */
+    fun divideCmd() {
+        val r = tryOps { present.divideShapes(state.selection, regionOps()) }
+        if (r == null) {
+            state = state.copy(message = tr("Bölmek için en az iki yol seçin (metni önce yola çevirin, grubu çözün)"))
+            return
+        }
+        commit(r.first) { it.withSelection(r.second.toSet()) }
     }
 
     /** Seçili yolları bileşik yola çevirir (içteki şekiller delik olur). */
