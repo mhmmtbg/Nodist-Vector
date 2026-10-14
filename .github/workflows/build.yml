@@ -147,7 +147,7 @@ jobs:
       - name: Paketlenen uygulamayı çalıştır
         shell: pwsh
         run: |
-          $app = "desktop/build/compose/binaries/main/app/Nodea/Nodea.exe"
+          $app = "desktop/build/compose/binaries/main/app/Nodist/Nodist.exe"
           if (-not (Test-Path $app)) { Write-Output "::error title=Windows::Uygulama dosyası yok"; exit 1 }
           $out = Join-Path $PWD "windows-self-test.png"
           $env:APPDATA = Join-Path $env:RUNNER_TEMP "appdata"
@@ -163,7 +163,7 @@ jobs:
         run: |
           mkdir -p dist
           cp desktop/build/compose/binaries/main/exe/*.exe "dist/nodea-setup-${VERSION_CODE}.exe"
-          (cd desktop/build/compose/binaries/main/app && 7z a -tzip -mx=7 "$GITHUB_WORKSPACE/dist/nodea-windows-${VERSION_CODE}.zip" "Nodea" > /dev/null)
+          (cd desktop/build/compose/binaries/main/app && 7z a -tzip -mx=7 "$GITHUB_WORKSPACE/dist/nodea-windows-${VERSION_CODE}.zip" "Nodist" > /dev/null)
           cp windows-self-test.png dist/windows-self-test.png
           ls -la dist
 

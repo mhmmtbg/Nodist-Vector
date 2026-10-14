@@ -93,6 +93,7 @@ private val Tools = listOf(
     ToolSpec(Tool.Direct, AppIcons.Direct, "Doğrudan seçim"),
     ToolSpec(Tool.Pen, AppIcons.Pen, "Kalem"),
     ToolSpec(Tool.Pencil, AppIcons.Pencil, "Kurşun kalem"),
+    ToolSpec(Tool.Eraser, AppIcons.Eraser, "Silgi"),
     ToolSpec(Tool.Rectangle, AppIcons.Rectangle, "Dikdörtgen"),
     ToolSpec(Tool.Ellipse, AppIcons.Ellipse, "Elips"),
     ToolSpec(Tool.Line, AppIcons.Line, "Çizgi"),
@@ -249,7 +250,7 @@ fun EditorScreen(vm: EditorViewModel, host: PlatformHost) {
         CrashDialog(
             onShare = {
                 vm.dismissCrashReport()
-                host.shareText(tr("Nodea çökme raporu"), report)
+                host.shareText(tr("Nodist çökme raporu"), report)
             },
             onDismiss = vm::dismissCrashReport,
         )

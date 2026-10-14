@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "store" / "raw"
 OUT = ROOT / "fastlane" / "metadata" / "android"
 
-APP_NAME = "Nodea"
+APP_NAME = "Nodist: Vektör"
 LOCALES = {"tr": "tr-TR", "en": "en-US"}
 TAGLINE = {
     "tr": "Katmanlı vektör çizim.\nAI, PDF ve SVG dosyalarını aç, düzenle, kaydet.",

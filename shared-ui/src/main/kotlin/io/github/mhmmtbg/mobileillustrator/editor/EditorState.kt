@@ -15,8 +15,11 @@ import io.github.mhmmtbg.mobileillustrator.model.Rect
 import io.github.mhmmtbg.mobileillustrator.model.Rgba
 import io.github.mhmmtbg.mobileillustrator.model.Vec2
 
-/** [Hand]: yalnızca tuvali kaydırır; dokunuş hiçbir şeyi seçmez ya da çizmez. */
-enum class Tool { Select, Direct, Pen, Pencil, Rectangle, Ellipse, Line, Text, Eyedropper, Hand }
+/**
+ * [Hand]: yalnızca tuvali kaydırır; dokunuş hiçbir şeyi seçmez ya da çizmez.
+ * [Eraser]: dokunulan ya da üzerinden sürüklenen nesneleri siler (nesne silgisi); tek geri alma adımıdır.
+ */
+enum class Tool { Select, Direct, Pen, Pencil, Eraser, Rectangle, Ellipse, Line, Text, Eyedropper, Hand }
 
 /** Kontur çizgi türü; aralıklar kalınlığa oranlıdır. */
 enum class DashStyle(val pattern: List<Double>) {

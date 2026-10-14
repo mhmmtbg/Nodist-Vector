@@ -54,10 +54,10 @@ object AiExporter {
     )
 
     /** Dosyanın bilgi sözlüğüne yazılan üretici adı; içe aktarırken "bu dosyayı biz mi yazdık" sorusunu yanıtlar. */
-    const val PRODUCER = "Nodea"
+    const val PRODUCER = "Nodist"
 
     /** Uygulamanın eski adıyla yazılmış dosyalar da kendi dosyası sayılır (katman kilitleri, üzerine kaydetme). */
-    val PRODUCERS = setOf(PRODUCER, "Mobile Illustrator")
+    val PRODUCERS = setOf(PRODUCER, "Nodea", "Mobile Illustrator")
 
     fun export(document: Document, options: Options = Options()): ByteArray = Writer(document, options).write()
 

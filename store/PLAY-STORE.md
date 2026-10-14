@@ -21,7 +21,7 @@ arayüz kodu, masaüstü çizicisiyle görüntüye çizilir); yazı tipi telefon
 
 ## 1. Ad, simge ve paket kimliği
 
-- Ad: **Nodea** (mağaza başlığı "Nodea: Vektör Çizim" / "Nodea: Vector Design").
+- Ad: **Nodist: Vektör** (mağaza başlığı "Nodist: Vektör" / "Nodist: Vector").
 - Paket kimliği: **`io.github.mhmmtbg.nodea`**. Mağazaya ilk yüklemeden sonra bir daha değiştirilemez.
 - Simge: lacivert zemin üzerinde düğümleri ve tutamaçlarıyla bir Bezier eğrisi.
 

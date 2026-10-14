@@ -144,7 +144,7 @@ fun LayersPanel(vm: EditorViewModel, host: PlatformHost, modifier: Modifier = Mo
                 Column {
                     Text(tr("Yalnızca seçilen katmanlar yazılır; içlerindeki gruplar ve sıra korunur."), style = MaterialTheme.typography.bodySmall)
                     val formats = listOf(
-                        ExportFormat.Nodea to tr("Nodea (.nodea) — yeniden düzenlemek için"),
+                        ExportFormat.Nodea to tr("Nodist (.nodea) — yeniden düzenlemek için"),
                         ExportFormat.Ai to "Illustrator (.ai)",
                         ExportFormat.Pdf to "PDF (.pdf)",
                         ExportFormat.Svg to "SVG (.svg)",

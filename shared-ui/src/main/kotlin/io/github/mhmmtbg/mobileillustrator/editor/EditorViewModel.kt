@@ -174,6 +174,8 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
         data class Marquee(val start: Vec2) : Drag
         data class Create(val start: Vec2, val nodeId: String, val layerId: String, val targets: List<Rect> = emptyList()) : Drag
         data class Pencil(val points: ArrayList<Vec2>, val nodeId: String, val layerId: String) : Drag
+        /** Silgi: şimdiye dek değdiği nesnelerin kimlikleri ve son konum (aradaki yol da taranır). */
+        data class Erase(val ids: LinkedHashSet<String>, val last: Vec2) : Drag
         data object PenHandle : Drag
         data class AnchorDrag(val nodeId: String, val ref: AnchorRef, val toLocal: Matrix, val origin: List<SubPath>, val start: Vec2) : Drag
         data class HandleDrag(val nodeId: String, val ref: AnchorRef, val outgoing: Boolean, val toLocal: Matrix, val origin: List<SubPath>) : Drag
@@ -318,6 +320,9 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
             }
             Tool.Direct -> directTap(p)
             Tool.Pen -> penTap(p)
+            Tool.Eraser -> present.hitTest(p, tolerance())?.let { hit ->
+                commit(present.removeNode(hit.id)) { it.copy(selection = emptySet(), layerSelection = emptySet(), nodeEdit = null) }
+            }
             Tool.Text -> state = state.copy(
                 textPrompt = TextPrompt(nodeId = null, position = p, fontSize = defaultFontSize()),
             )
@@ -386,6 +391,19 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
                 )
                 state = state.copy(preview = base.addNode(d.layerId, line))
             }
+            is Drag.Erase -> {
+                // Parmak iki örnek arasında atlamış olabilir; aradaki yol yarım dokunma payı aralıkla taranır.
+                val step = (tolerance() / 2).coerceAtLeast(1e-6)
+                val dist = d.last.distanceTo(now)
+                val n = (dist / step).toInt().coerceAtMost(200)
+                for (i in 1..maxOf(n, 1)) {
+                    val t = if (n == 0) 1.0 else i.toDouble() / n
+                    val p = Vec2(d.last.x + (now.x - d.last.x) * t, d.last.y + (now.y - d.last.y) * t)
+                    base.hitTest(p, tolerance())?.let { d.ids += it.id }
+                }
+                drag = d.copy(last = now)
+                if (d.ids.isNotEmpty()) state = state.copy(preview = d.ids.fold(base) { doc, id -> doc.removeNode(id) })
+            }
             Drag.PenHandle -> {
                 val pen = state.pen ?: return
                 val a = pen.anchors.last()
@@ -432,6 +450,14 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
                 val node = PathNode(id = d.nodeId, subpaths = listOf(sp), stroke = freehandStroke())
                 commit(present.addNode(d.layerId, node)) { it.withSelection(setOf(d.nodeId)) }
             }
+            is Drag.Erase -> {
+                if (d.ids.isEmpty()) {
+                    state = state.copy(preview = null)
+                } else {
+                    val doc = d.ids.fold(present) { acc, id -> acc.removeNode(id) }
+                    commit(doc) { it.copy(selection = emptySet(), layerSelection = emptySet(), nodeEdit = null) }
+                }
+            }
             Drag.PenHandle, is Drag.Pan, null -> {}
             else -> state.preview?.let { commit(it) }
         }
@@ -465,6 +491,12 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
                 return if (state.pen != null) Drag.PenHandle else Drag.Pan(startScreen)
             }
             Tool.Text -> return Drag.Pan(startScreen)
+            Tool.Eraser -> {
+                val ids = LinkedHashSet<String>()
+                doc.hitTest(start, tol)?.let { ids += it.id }
+                if (ids.isNotEmpty()) state = state.copy(preview = ids.fold(doc) { d, id -> d.removeNode(id) })
+                return Drag.Erase(ids, start)
+            }
             Tool.Pencil, Tool.Rectangle, Tool.Ellipse, Tool.Line -> {
                 val layer = drawingLayer() ?: run {
                     state = state.copy(message = tr("Etkin katman kilitli ya da gizli"))
@@ -754,7 +786,7 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
         } else {
             s = s.copy(nodeEdit = null)
         }
-        if (tool == Tool.Pen || tool == Tool.Pencil) s = s.copy(selection = emptySet(), layerSelection = emptySet())
+        if (tool == Tool.Pen || tool == Tool.Pencil || tool == Tool.Eraser) s = s.copy(selection = emptySet(), layerSelection = emptySet())
         state = s
     }
 

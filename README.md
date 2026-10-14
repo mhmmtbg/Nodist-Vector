@@ -1,4 +1,4 @@
-# Nodea
+# Nodist: Vektör
 
 Android (telefon ve tablet) ve Windows için katmanlı vektör çizim uygulaması. Illustrator (.ai), PDF
 ve SVG dosyalarını katmanlarıyla açar, düzenler ve yeniden .ai, PDF, SVG ya da PNG olarak kaydeder.
@@ -14,7 +14,7 @@ Her `main` push'unda GitHub Actions derler ve [Releases](../../releases) sayfas�
 | `nodea-N.apk` | Android'e doğrudan kurulum (Android 8.0 ve üzeri) |
 | `nodea-N.aab` | Google Play'e yüklenecek paket |
 | `nodea-setup-N.exe` | Windows kurulum dosyası |
-| `nodea-windows-N.zip` | Windows, kurulumsuz: klasörü aç, `Nodea.exe` dosyasını çalıştır |
+| `nodea-windows-N.zip` | Windows, kurulumsuz: klasörü aç, `Nodist.exe` dosyasını çalıştır |
 
 Windows dosyaları imzasızdır; ilk açılışta SmartScreen "Windows kişisel bilgisayarınızı korudu" uyarısı
 gösterir ("Ek bilgi" → "Yine de çalıştır"). Java kurmak gerekmez; çalışma ortamı paketin içindedir.

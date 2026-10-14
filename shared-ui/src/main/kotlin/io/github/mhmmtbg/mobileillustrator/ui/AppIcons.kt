@@ -38,6 +38,14 @@ object AppIcons {
                 "c-0.39,-0.39 -1.02,-0.39 -1.41,0l-1.83,1.83 3.75,3.75 1.83,-1.83z",
         )
     }
+    val Eraser by lazy {
+        // Eğik silgi gövdesi (sağ üst uç sert, sol alt uç yumuşak kısım) ve zemin çizgisi.
+        icon(
+            "Eraser",
+            "M15.2,3.2 L20.8,8.8 L10.6,19 L4.9,19 L2.6,16.7 Z M15.2,6 L6,15.2 L7.2,16.4 L10.4,16.4 L18,8.8 Z M11.5,20.5 H21 V22 H11.5 Z",
+            evenOdd = true,
+        )
+    }
     val Rectangle by lazy { icon("Rectangle", "M3,5 H21 V19 H3 Z M5,7 V17 H19 V7 Z", evenOdd = true) }
     val Ellipse by lazy {
         icon("Ellipse", "M12,4 A8,8 0 1 0 12,20 A8,8 0 1 0 12,4 Z M12,6 A6,6 0 1 1 12,18 A6,6 0 1 1 12,6 Z", evenOdd = true)

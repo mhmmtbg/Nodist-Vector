@@ -38,7 +38,7 @@ compose.desktop {
         mainClass = "io.github.mhmmtbg.mobileillustrator.desktop.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Exe, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "Nodea"
+            packageName = "Nodist"
             packageVersion = "1.0.$buildNumber"
             description = "Katmanlı vektör çizim; .ai, PDF ve SVG dosyalarını açar ve kaydeder"
             vendor = "mhmmtbg"
@@ -49,7 +49,7 @@ compose.desktop {
             }
             windows {
                 iconFile.set(project.file("packaging/icon.ico"))
-                menuGroup = "Nodea"
+                menuGroup = "Nodist"
                 shortcut = true
                 dirChooser = true
                 perUserInstall = true

@@ -6,7 +6,7 @@ Son güncelleme / Last updated: 2026-10-11
 
 ## Türkçe
 
-Bu politika Nodea uygulaması (Android ve Windows) için geçerlidir.
+Bu politika Nodist: Vektör uygulaması (Android ve Windows) için geçerlidir.
 
 **Uygulamanın kendisi hiçbir kişisel veri toplamaz.** Hesap açmaz, sunucusu yoktur.
 
@@ -21,7 +21,7 @@ Bu politika Nodea uygulaması (Android ve Windows) için geçerlidir.
 
 ## English
 
-This policy covers the Nodea app (Android and Windows).
+This policy covers the Nodist: Vektör app (Android and Windows).
 
 **The app itself collects no personal data.** There are no accounts and no server.
 

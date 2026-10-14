@@ -61,7 +61,7 @@ fun main(args: Array<String>) {
                 vm.flushAutosaveNow()
                 exitApplication()
             },
-            title = "Nodea",
+            title = "Nodist: Vektör",
             state = rememberWindowState(width = 1280.dp, height = 820.dp),
             icon = androidx.compose.ui.res.painterResource("icon.png"),
             onKeyEvent = { event -> handleShortcut(event, vm, host, ::save) },
@@ -125,6 +125,7 @@ private fun handleShortcut(event: KeyEvent, vm: EditorViewModel, host: DesktopHo
         Key.A -> vm.selectTool(Tool.Direct)
         Key.P -> vm.selectTool(Tool.Pen)
         Key.N -> vm.selectTool(Tool.Pencil)
+        Key.E -> vm.selectTool(Tool.Eraser)
         Key.M -> vm.selectTool(Tool.Rectangle)
         Key.L -> vm.selectTool(Tool.Ellipse)
         Key.T -> vm.selectTool(Tool.Text)
@@ -142,7 +143,7 @@ private fun installCrashLog(file: File) {
         try {
             val trace = StringWriter().also { error.printStackTrace(PrintWriter(it)) }.toString()
             file.writeText(
-                "Nodea (masaüstü)\n${System.getProperty("os.name")} ${System.getProperty("os.version")}, Java ${System.getProperty("java.version")}\n" +
+                "Nodist (masaüstü)\n${System.getProperty("os.name")} ${System.getProperty("os.version")}, Java ${System.getProperty("java.version")}\n" +
                     "İş parçacığı: ${thread.name}\n\n$trace",
             )
         } catch (e: Throwable) {
