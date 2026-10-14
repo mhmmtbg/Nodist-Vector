@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -396,7 +397,9 @@ private fun TopBar(
     ) {
         Box {
             BarButton(AppIcons.Menu, tr("Dosya menüsü")) { menu = true }
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            // Menü her açılışta baştan gösterilir (uzun menüde kaydırma konumu bir önceki açılıştan kalmasın).
+            val menuScroll = remember(menu) { ScrollState(0) }
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, scrollState = menuScroll) {
                 @Composable
                 fun item(icon: ImageVector, label: String, action: () -> Unit) =
                     DropdownMenuItem(

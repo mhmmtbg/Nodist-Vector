@@ -126,7 +126,11 @@ fun TransformToolsDialog(
         title = { Text(tr("Dönüşüm araçları")) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                ChoiceRow(tr("Araç"), kinds.map { it.second to (it.first == kind) }, icons = listOf(AppIcons.Rotate, AppIcons.Scale, AppIcons.Reflect, AppIcons.Shear)) { kind = kinds[it].first }
+                ChoiceRow(tr("Araç"), kinds.map { it.second to (it.first == kind) }, icons = listOf(AppIcons.Rotate, AppIcons.Scale, AppIcons.Reflect, AppIcons.Shear)) {
+                    kind = kinds[it].first
+                    // Yatırmada geçerli açı -89..89'dur; döndürmeden kalan 90° gibi bir değer uygun bir varsayılana çekilir.
+                    if (kind == TransformKind.Shear && (parseNum(angle)?.let { a -> a <= -89 || a >= 89 } != false)) angle = "20"
+                }
                 when (kind) {
                     TransformKind.Rotate ->
                         OutlinedTextField(angle, { angle = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text(tr("Açı (derece, saat yönünün tersine)")) }, keyboardOptions = DecimalKeys)
@@ -174,6 +178,7 @@ fun TransformToolsDialog(
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable(role = Role.Checkbox) { copy = !copy }) {
                     Checkbox(copy, null)
+                    Spacer(Modifier.width(4.dp))
                     Text(tr("Kopya oluştur"))
                 }
             }

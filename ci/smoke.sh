@@ -174,6 +174,10 @@ tap "Kontur"
 tap "Özel renk"
 tap "Uygula"
 expect "Kontur kalınlığı" enabled true "kontur rengi varken kalınlık kaydırıcısı görünmeli"
+tap "Seçenekler"
+wait_for "Kontur seçenekleri"
+shot 07a-kontur-secenekleri
+tap "Tamam"
 tap "Dolgu"
 
 tap "Kalem"
@@ -322,6 +326,17 @@ wait_for "Sabit nokta"
 tap "Yatır"
 shot 26-donusum-araclari
 tap "Vazgeç"
+tap "Dosya menüsü"
+tap "Çalışma yüzeyleri…"
+wait_for "Yeni çalışma yüzeyi"
+shot 26a-calisma-yuzeyleri
+tap "Tamam"
+tap "Dosya menüsü"
+scroll_tap "Renk örnekleri…" 25
+wait_for "Seçili rengi ekle"
+tap "Seçili rengi ekle"
+shot 26b-renk-ornekleri
+tap "Tamam"
 tap "Dosya menüsü"
 shot 27-dosya-menusu
 scroll_tap "Yardım ve kılavuz" 25
