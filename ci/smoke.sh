@@ -39,7 +39,10 @@ import re, sys, xml.etree.ElementTree as ET
 path, label, attr, en, l10n = sys.argv[1:6]
 if en == "1":
     # Arayüz İngilizce ise etiketler uygulamanın kendi çeviri tablosundan çevrilir.
-    table = dict(re.findall(r'^\s*"((?:[^"\\]|\\.)*)" to "((?:[^"\\]|\\.)*)",', open(l10n, encoding="utf-8").read(), re.M))
+    import glob, os
+    table = {}
+    for f in sorted(glob.glob(os.path.join(l10n, "L10n*.kt"))):
+        table.update(re.findall(r'^\s*"((?:[^"\\]|\\.)*)" to "((?:[^"\\]|\\.)*)",', open(f, encoding="utf-8").read(), re.M))
     if label in table:
         label = table[label]
     else:
@@ -76,7 +79,7 @@ bar_find() {
   adb shell input swipe $((W * 20 / 100)) "$y" $((W * 90 / 100)) "$y" 150
   adb shell input swipe $((W * 20 / 100)) "$y" $((W * 90 / 100)) "$y" 150
   sleep 1
-  for _ in 1 2 3 4 5 6; do
+  for _ in $(seq 1 14); do
     if has "$1"; then return 0; fi
     adb shell input swipe $((W * 70 / 100)) "$y" $((W * 35 / 100)) "$y" 500
     sleep 1
@@ -85,12 +88,24 @@ bar_find() {
 }
 bar_tap() { bar_find "$1" || fail "Seçim çubuğunda bulunamadı: $1"; tap "$1"; }
 dismiss() { if has "Tamam"; then tap "Tamam"; fi; }
+# Şekil araçları "Şekiller" düğmesinin menüsündedir.
+shape() { tap "Şekiller"; tap "$1"; }
+# Açık pencerede ya da menüde aranan öğe görünmüyorsa liste yukarı kaydırılarak bulunur.
+scroll_find() {
+  for _ in 1 2 3 4 5 6; do
+    if has "$1"; then return 0; fi
+    adb shell input swipe $((W * ${2:-50} / 100)) $((H * 70 / 100)) $((W * ${2:-50} / 100)) $((H * 35 / 100)) 400
+    sleep 1
+  done
+  has "$1"
+}
+scroll_tap() { scroll_find "$1" "${2:-50}" || fail "Pencerede bulunamadı: $1"; tap "$1"; }
 
 adb install -r "$APK"
 adb logcat -c
 # Test etiketleri Türkçe. Hata ayıklama derlemesinde arayüz dili Türkçeye sabitlenir; sürüm derlemesinde
 # buna izin yoktur, orada cihaz dili (İngilizce) geçerlidir ve etiketler çeviri tablosundan çevrilir.
-L10N="$(dirname "$0")/../core-model/src/main/kotlin/io/github/mhmmtbg/nodist/model/L10n.kt"
+L10N="$(dirname "$0")/../core-model/src/main/kotlin/io/github/mhmmtbg/nodist/model"
 if adb shell "run-as $PKG sh -c 'mkdir -p files && echo tr > files/language'" > /dev/null 2>&1 \
   && [ "$(adb shell "run-as $PKG cat files/language" 2> /dev/null | tr -d '\r')" = tr ]; then EN=0; else EN=1; fi
 echo "Arayüz dili: $([ "$EN" = 1 ] && echo İngilizce || echo Türkçe)"
@@ -126,7 +141,7 @@ shot 04-katman-icerigi
 tap "Paneli kapat"
 
 if [ "$MODE" = quick ]; then
-  tap "Dikdörtgen"
+  shape "Dikdörtgen"
   adb shell input swipe $((W * 10 / 100)) $((H * 22 / 100)) $((W * 35 / 100)) $((H * 30 / 100)) 500
   expect "Geri al" enabled true "çizim geri alınabilmeli"
   alive "sürüm derlemesi"
@@ -153,7 +168,7 @@ alive "taşıma ve çoğaltma"
 shot 06-tasima
 
 # 4) Çizim araçları
-tap "Dikdörtgen"
+shape "Dikdörtgen"
 adb shell input swipe $((W * 10 / 100)) $((H * 22 / 100)) $((W * 35 / 100)) $((H * 30 / 100)) 500
 tap "Kontur"
 tap "Özel renk"
@@ -232,7 +247,7 @@ try_export "Farklı kaydet (.nodist)" nodist
 # Farklı kaydet'ten sonra "Kaydet" sormadan aynı dosyanın üzerine yazmalı.
 if [ -f "$OUT/disa-aktarim.nodist" ]; then
   before=$(stat -c %s "$OUT/disa-aktarim.nodist")
-  tap "Elips"
+  shape "Elips"
   adb shell input swipe $((W * 40 / 100)) $((H * 14 / 100)) $((W * 55 / 100)) $((H * 19 / 100)) 400
   tap "Dosya menüsü"
   tap "Kaydet"
@@ -281,10 +296,40 @@ tap "Yeni belge…"
 tap "Oluştur"
 sleep 3
 wait_for "Adsız"
+tap "Şekiller"
+shot 20-sekiller-menusu
 tap "Dikdörtgen"
 adb shell input swipe $((W * 30 / 100)) $((H * 40 / 100)) $((W * 60 / 100)) $((H * 55 / 100)) 400
+# 9a) Canlı efektler: çizilen dikdörtgenin köşeleri sonradan yuvarlanır, gölge eklenip panelde görünür.
+bar_tap "Köşe +"
+bar_tap "Köşe +"
+shot 21-kose-yuvarlama
+bar_tap "Görünüm…"
+wait_for "Efekt ekle"
+has "Köşe yuvarlama" || fail "köşe yuvarlama canlı efekt olarak listelenmedi"
+shot 22-gorunum-paneli
+scroll_tap "Gölge"
+wait_for "Ekle"
+shot 23-golge-ayari
+tap "Ekle"
+wait_for "Efekt ekle"
+shot 24-gorunum-golgeli
+tap "Kapat"
+alive "canlı efektler"
+shot 25-golge
+bar_tap "Dönüşüm araçları…"
+wait_for "Sabit nokta"
+tap "Yatır"
+shot 26-donusum-araclari
+tap "Vazgeç"
+tap "Dosya menüsü"
+shot 27-dosya-menusu
+scroll_tap "Yardım ve kılavuz" 25
+wait_for "Yardım"
+shot 28-yardim
+tap "Kapat"
 # 9b) Pathfinder, gradyan, sayısal dönüşüm, hizalama: iki şekli birleştir
-tap "Elips"
+shape "Elips"
 adb shell input swipe $((W * 50 / 100)) $((H * 48 / 100)) $((W * 80 / 100)) $((H * 62 / 100)) 400
 tap "Dosya menüsü"
 tap "Tümünü seç"

@@ -1,6 +1,7 @@
 package io.github.mhmmtbg.nodist.ui
 
 import io.github.mhmmtbg.nodist.model.trName
+import io.github.mhmmtbg.nodist.model.hasStraightCorners
 import io.github.mhmmtbg.nodist.model.tr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -35,6 +36,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -88,31 +90,43 @@ private val Swatches = listOf(
 
 private class ToolSpec(val tool: Tool, val icon: ImageVector, val label: String)
 
-/** Etiketler kaynak dildedir; gösterilirken çevrilir (dil değişince liste yeniden kurulmaz). */
-private val Tools = listOf(
+/** Araç çubuğunda tek düğmede toplanan araçlar; düğmeye dokununca menüleri açılır. */
+private class ToolGroup(val label: String, val icon: ImageVector, val tools: List<ToolSpec>)
+
+/** Şekil araçları tek "Şekiller" düğmesinde toplanır. */
+private val ShapeGroup = ToolGroup(
+    "Şekiller", AppIcons.Shapes,
+    listOf(
+        ToolSpec(Tool.Rectangle, AppIcons.Rectangle, "Dikdörtgen"),
+        ToolSpec(Tool.RoundedRect, AppIcons.RoundedRect, "Yuvarlak dikdörtgen"),
+        ToolSpec(Tool.Ellipse, AppIcons.Ellipse, "Elips"),
+        ToolSpec(Tool.Polygon, AppIcons.Polygon, "Çokgen"),
+        ToolSpec(Tool.Star, AppIcons.Star, "Yıldız"),
+        ToolSpec(Tool.Line, AppIcons.Line, "Çizgi"),
+    ),
+)
+
+/** Yolları kesen araçlar. */
+private val CutGroup = ToolGroup(
+    "Kesme araçları", AppIcons.Scissors,
+    listOf(
+        ToolSpec(Tool.Scissors, AppIcons.Scissors, "Makas"),
+        ToolSpec(Tool.Knife, AppIcons.Knife, "Bıçak"),
+    ),
+)
+
+/** Araç çubuğunun sırası: tek araçlar ve araç grupları. Etiketler kaynak dildedir; gösterilirken çevrilir. */
+private val ToolBarItems: List<Any> = listOf(
     ToolSpec(Tool.Select, AppIcons.Select, "Seçim"),
     ToolSpec(Tool.Direct, AppIcons.Direct, "Doğrudan seçim"),
     ToolSpec(Tool.Pen, AppIcons.Pen, "Kalem"),
     ToolSpec(Tool.Pencil, AppIcons.Pencil, "Kurşun kalem"),
     ToolSpec(Tool.Eraser, AppIcons.Eraser, "Silgi"),
-    ToolSpec(Tool.Rectangle, AppIcons.Rectangle, "Dikdörtgen"),
-    ToolSpec(Tool.Ellipse, AppIcons.Ellipse, "Elips"),
-    ToolSpec(Tool.Line, AppIcons.Line, "Çizgi"),
+    ShapeGroup,
     ToolSpec(Tool.Text, AppIcons.Text, "Metin"),
     ToolSpec(Tool.Eyedropper, AppIcons.Eyedropper, "Damlalık"),
     ToolSpec(Tool.Hand, AppIcons.Hand, "Kaydır"),
-)
-
-/**
- * Daha az kullanılan araçlar: dar telefon çubuğunda tek bir "Diğer araçlar" düğmesinin menüsünde durur; yan şeritte
- * (tablet, yatay telefon) doğrudan görünürler.
- */
-private val ExtraTools = listOf(
-    ToolSpec(Tool.Scissors, AppIcons.Scissors, "Makas"),
-    ToolSpec(Tool.Knife, AppIcons.Knife, "Bıçak"),
-    ToolSpec(Tool.RoundedRect, AppIcons.RoundedRect, "Yuvarlak dikdörtgen"),
-    ToolSpec(Tool.Polygon, AppIcons.Polygon, "Çokgen"),
-    ToolSpec(Tool.Star, AppIcons.Star, "Yıldız"),
+    CutGroup,
 )
 
 @Composable
@@ -384,46 +398,51 @@ private fun TopBar(
             BarButton(AppIcons.Menu, tr("Dosya menüsü")) { menu = true }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 @Composable
-                fun item(label: String, action: () -> Unit) =
-                    DropdownMenuItem(text = { Text(label) }, onClick = { menu = false; action() })
-                item(tr("Belgelerim")) { vm.showGallery() }
-                item(tr("Yeni belge…"), onNew)
-                item(tr("Aç… (.nodist, .ai, .pdf, .svg)"), onOpen)
-                item(tr("Örnek dosyayı aç")) { vm.openSample() }
+                fun item(icon: ImageVector, label: String, action: () -> Unit) =
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        onClick = { menu = false; action() },
+                    )
+                item(AppIcons.Gallery, tr("Belgelerim")) { vm.showGallery() }
+                item(AppIcons.NewDoc, tr("Yeni belge…"), onNew)
+                item(AppIcons.Open, tr("Aç… (.nodist, .ai, .pdf, .svg)"), onOpen)
+                item(AppIcons.Sample, tr("Örnek dosyayı aç")) { vm.openSample() }
                 HorizontalDivider()
-                item(tr("Kaydet"), onSave)
-                item(tr("Farklı kaydet (.nodist)"), onSaveAs)
-                item(tr("AI dışa aktar")) { onExport(ExportFormat.Ai) }
-                item(tr("PDF dışa aktar")) { onExport(ExportFormat.Pdf) }
-                item(tr("SVG dışa aktar")) { onExport(ExportFormat.Svg) }
-                item(tr("PNG dışa aktar")) { onExport(ExportFormat.Png) }
+                item(AppIcons.Save, tr("Kaydet"), onSave)
+                item(AppIcons.SaveAs, tr("Farklı kaydet (.nodist)"), onSaveAs)
+                item(AppIcons.Export, tr("AI dışa aktar")) { onExport(ExportFormat.Ai) }
+                item(AppIcons.Export, tr("PDF dışa aktar")) { onExport(ExportFormat.Pdf) }
+                item(AppIcons.Export, tr("SVG dışa aktar")) { onExport(ExportFormat.Svg) }
+                item(AppIcons.Picture, tr("PNG dışa aktar")) { onExport(ExportFormat.Png) }
                 HorizontalDivider()
-                item(tr("Dışarıdan ekle… (.nodist, .ai, .pdf, .svg)"), onImport)
-                item(tr("Görsel yerleştir…"), onPlaceImage)
-                if (vm.canPaste) item(tr("Yapıştır")) { vm.paste() }
-                item(tr("Çalışma yüzeyleri…"), onArtboards)
-                item(tr("Belgeyi adlandır…"), onRename)
-                item(tr("Tümünü seç")) { vm.selectAll() }
-                item(if (state.snapping) tr("Yakalama: açık") else tr("Yakalama: kapalı")) { vm.toggleSnapping() }
+                item(AppIcons.Import, tr("Dışarıdan ekle… (.nodist, .ai, .pdf, .svg)"), onImport)
+                item(AppIcons.Picture, tr("Görsel yerleştir…"), onPlaceImage)
+                if (vm.canPaste) item(AppIcons.Paste, tr("Yapıştır")) { vm.paste() }
+                item(AppIcons.Artboards, tr("Çalışma yüzeyleri…"), onArtboards)
+                item(AppIcons.Rename, tr("Belgeyi adlandır…"), onRename)
+                item(AppIcons.SelectAll, tr("Tümünü seç")) { vm.selectAll() }
+                item(AppIcons.Magnet, if (state.snapping) tr("Yakalama: açık") else tr("Yakalama: kapalı")) { vm.toggleSnapping() }
                 HorizontalDivider()
-                item(if (state.showRulers) tr("Cetveller: açık") else tr("Cetveller: kapalı")) { vm.toggleRulers() }
-                item(if (state.showGrid) tr("Izgara: açık") else tr("Izgara: kapalı")) { vm.toggleGrid() }
-                item(if (state.snapToGrid) tr("Izgaraya yakala: açık") else tr("Izgaraya yakala: kapalı")) { vm.toggleSnapToGrid() }
-                item(tr("Izgara aralığı…"), onGridSize)
-                item(if (state.showGuides) tr("Kılavuzlar: görünür") else tr("Kılavuzlar: gizli")) { vm.toggleGuides() }
+                item(AppIcons.Ruler, if (state.showRulers) tr("Cetveller: açık") else tr("Cetveller: kapalı")) { vm.toggleRulers() }
+                item(AppIcons.Grid, if (state.showGrid) tr("Izgara: açık") else tr("Izgara: kapalı")) { vm.toggleGrid() }
+                item(AppIcons.Magnet, if (state.snapToGrid) tr("Izgaraya yakala: açık") else tr("Izgaraya yakala: kapalı")) { vm.toggleSnapToGrid() }
+                item(AppIcons.Grid, tr("Izgara aralığı…"), onGridSize)
+                item(AppIcons.Guides, if (state.showGuides) tr("Kılavuzlar: görünür") else tr("Kılavuzlar: gizli")) { vm.toggleGuides() }
                 if (state.document.guides.isNotEmpty()) {
-                    item(if (state.document.guides.any { !it.locked }) tr("Kılavuzları kilitle") else tr("Kılavuzların kilidini aç")) { vm.toggleGuidesLocked() }
-                    item(tr("Kılavuzları temizle")) { vm.clearGuidesCmd() }
+                    val anyUnlocked = state.document.guides.any { !it.locked }
+                    item(if (anyUnlocked) AppIcons.Lock else AppIcons.Unlock, if (anyUnlocked) tr("Kılavuzları kilitle") else tr("Kılavuzların kilidini aç")) { vm.toggleGuidesLocked() }
+                    item(AppIcons.Delete, tr("Kılavuzları temizle")) { vm.clearGuidesCmd() }
                 }
-                item(tr("Renk örnekleri…"), onSwatches)
-                item(if (state.outlineView) tr("Ana hat görünümü: açık") else tr("Ana hat görünümü: kapalı")) { vm.toggleOutlineView() }
+                item(AppIcons.Palette, tr("Renk örnekleri…"), onSwatches)
+                item(AppIcons.OutlineView, if (state.outlineView) tr("Ana hat görünümü: açık") else tr("Ana hat görünümü: kapalı")) { vm.toggleOutlineView() }
                 HorizontalDivider()
-                item(tr("Yardım ve kılavuz"), onHelp)
+                item(AppIcons.Help, tr("Yardım ve kılavuz"), onHelp)
                 // Dil değiştirme: seçim kaydedilir ve ekran yeni dille yeniden kurulur.
-                item(tr("Dil: Türkçe")) { onToggleLanguage() }
+                item(AppIcons.Language, tr("Dil: Türkçe")) { onToggleLanguage() }
                 if (coffee != null) {
                     HorizontalDivider()
-                    item(if (coffee.purchased) tr("Kahve için teşekkürler ☕") else tr("Geliştiriciye kahve ısmarla ☕"), onCoffee)
+                    item(AppIcons.Coffee, if (coffee.purchased) tr("Kahve için teşekkürler ☕") else tr("Geliştiriciye kahve ısmarla ☕"), onCoffee)
                 }
             }
         }
@@ -648,9 +667,15 @@ private fun ContextBar(
         }
     }
     if (state.pen == null && mode == 0) {
-        // Şekil araçlarının ayarları; şekil çizildikten sonra seçili iken de değiştirilebilir (bir sonraki şekil için).
+        // Seçili düz köşeli yollarda köşe yarıçapı (canlı köşe yuvarlama): çizildikten sonra da ayarlanır.
+        val cornerPaths = state.selection.any { (doc.findNode(it) as? PathNode)?.hasStraightCorners() == true }
+        if (cornerPaths && state.tool != Tool.Direct) {
+            actions.add(0, tr("Köşe +") to { vm.adjustSelectionCorners(1) })
+            actions.add(0, tr("Köşe −") to { vm.adjustSelectionCorners(-1) })
+        }
+        // Şekil araçlarının ayarları (bir sonraki şekil için).
         when (state.tool) {
-            Tool.RoundedRect -> {
+            Tool.RoundedRect -> if (!cornerPaths) {
                 actions.add(0, tr("Köşe +") to { vm.adjustCornerRatio(0.05) })
                 actions.add(0, tr("Köşe −") to { vm.adjustCornerRatio(-0.05) })
             }
@@ -767,7 +792,11 @@ private val ActionIcons: Map<String, ImageVector> by lazy {
         "Kontur ana hattı" to AppIcons.Outline, "Yolu ötele…" to AppIcons.Offset, "Böl" to AppIcons.Divide,
         "Bileşik yap" to AppIcons.Compound, "Bileşiği çöz" to AppIcons.Release, "Yolları birleştir" to AppIcons.Join,
         "Yol" to AppIcons.Nodes, "Dönüşüm araçları…" to AppIcons.Transform, "Tekrar dönüştür" to AppIcons.Transform,
-        "Aynısını seç…" to AppIcons.Select, "Görünüm…" to AppIcons.Shapes, "Kenarlara kılavuz" to AppIcons.Shapes,
+        "Aynısını seç…" to AppIcons.Select, "Görünüm…" to AppIcons.Effects, "Kenarlara kılavuz" to AppIcons.Guides,
+        "Yatay boşluk…" to AppIcons.SpacingH, "Dikey boşluk…" to AppIcons.SpacingV,
+        "Hedef: seçim" to AppIcons.Target, "Hedef: çalışma yüzeyi" to AppIcons.Target, "Hedef: anahtar nesne" to AppIcons.Target,
+        "Köşe −" to AppIcons.RoundCorner, "Köşe +" to AppIcons.RoundCorner, "Kenar −" to AppIcons.Polygon, "Kenar +" to AppIcons.Polygon,
+        "İç −" to AppIcons.Star, "İç +" to AppIcons.Star, "Uç −" to AppIcons.Star, "Uç +" to AppIcons.Star,
         "Hizala" to AppIcons.AlignLeft, "Şekil" to AppIcons.Shapes, "Dönüştür" to AppIcons.Transform,
         "Vektöre çevir" to AppIcons.Picture, "Metni düzenle" to AppIcons.Pencil, "Eğ" to AppIcons.Arc, "Yola çevir" to AppIcons.Nodes,
         "Kopyala" to AppIcons.Copy, "Kes" to AppIcons.Cut, "Yapıştır" to AppIcons.Paste, "Çoğalt" to AppIcons.Duplicate,
@@ -910,24 +939,12 @@ private fun formatWidth(w: Double): String {
 @Composable
 private fun ToolRow(vm: EditorViewModel) {
     val active = vm.state.tool
-    var more by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp)) {
-        for (t in Tools) ToolButton(t, active == t.tool, Modifier.weight(1f).height(46.dp)) { vm.selectTool(t.tool) }
-        val extra = ExtraTools.firstOrNull { it.tool == active }
-        Box(Modifier.weight(1f).height(46.dp)) {
-            ToolButton(
-                ToolSpec(extra?.tool ?: Tool.Select, extra?.icon ?: AppIcons.Shapes, "Diğer araçlar"),
-                extra != null,
-                Modifier.fillMaxSize(),
-            ) { more = true }
-            DropdownMenu(expanded = more, onDismissRequest = { more = false }) {
-                for (t in ExtraTools) {
-                    DropdownMenuItem(
-                        text = { Text(tr(t.label)) },
-                        leadingIcon = { Icon(t.icon, contentDescription = null) },
-                        onClick = { more = false; vm.selectTool(t.tool) },
-                    )
-                }
+        for (item in ToolBarItems) {
+            val m = Modifier.weight(1f).height(46.dp)
+            when (item) {
+                is ToolSpec -> ToolButton(item, active == item.tool, m) { vm.selectTool(item.tool) }
+                is ToolGroup -> ToolGroupButton(vm, item, m)
             }
         }
     }
@@ -945,12 +962,43 @@ private fun ToolRail(vm: EditorViewModel) {
             .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        for (t in Tools + ExtraTools) ToolButton(t, active == t.tool, Modifier.size(width = 48.dp, height = 44.dp)) { vm.selectTool(t.tool) }
+        for (item in ToolBarItems) {
+            val m = Modifier.size(width = 48.dp, height = 44.dp)
+            when (item) {
+                is ToolSpec -> ToolButton(item, active == item.tool, m) { vm.selectTool(item.tool) }
+                is ToolGroup -> ToolGroupButton(vm, item, m)
+            }
+        }
+    }
+}
+
+/**
+ * Araç grubu düğmesi: grubun en son kullanılan aracının simgesini gösterir; dokununca grubun bütün araçları
+ * simgeleriyle bir menüde açılır.
+ */
+@Composable
+private fun ToolGroupButton(vm: EditorViewModel, group: ToolGroup, modifier: Modifier) {
+    val active = vm.state.tool
+    var open by remember { mutableStateOf(false) }
+    var last by remember { mutableStateOf(group.tools.first()) }
+    val current = group.tools.firstOrNull { it.tool == active }
+    if (current != null && current !== last) last = current
+    Box(modifier) {
+        ToolButton(ToolSpec(last.tool, last.icon, group.label), current != null, Modifier.fillMaxSize(), badge = true) { open = true }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            for (t in group.tools) {
+                DropdownMenuItem(
+                    text = { Text(tr(t.label)) },
+                    leadingIcon = { Icon(t.icon, contentDescription = null, tint = if (t.tool == active) AppColors.Accent else LocalContentColor.current) },
+                    onClick = { open = false; vm.selectTool(t.tool) },
+                )
+            }
+        }
     }
 }
 
 @Composable
-private fun ToolButton(spec: ToolSpec, active: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun ToolButton(spec: ToolSpec, active: Boolean, modifier: Modifier, badge: Boolean = false, onClick: () -> Unit) {
     Box(
         modifier
             .padding(horizontal = 2.dp)
@@ -961,6 +1009,14 @@ private fun ToolButton(spec: ToolSpec, active: Boolean, modifier: Modifier, onCl
         contentAlignment = Alignment.Center,
     ) {
         Icon(spec.icon, contentDescription = null, tint = if (active) Color(0xFF2B1A0E) else AppColors.OnPanel)
+        // Menüsü olan düğmenin köşesinde küçük üçgen durur (Illustrator'daki gibi).
+        if (badge) {
+            Icon(
+                AppIcons.CornerMark, contentDescription = null,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 5.dp, bottom = 5.dp).size(7.dp),
+                tint = if (active) Color(0xFF2B1A0E) else AppColors.OnPanelMuted,
+            )
+        }
     }
 }
 

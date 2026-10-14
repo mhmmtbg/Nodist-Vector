@@ -41,7 +41,7 @@ class DocIndex private constructor(val document: Document, private val boxes: Id
 
         private fun compute(node: Node): Entry {
             val b = node.bounds() ?: return Entry(null, null)
-            val pad = strokePad(node, Matrix.Identity)
+            val pad = strokePad(node, Matrix.Identity) + LiveEffects.pad(node)
             return Entry(b, if (pad > 0) b.inflate(pad) else b)
         }
 

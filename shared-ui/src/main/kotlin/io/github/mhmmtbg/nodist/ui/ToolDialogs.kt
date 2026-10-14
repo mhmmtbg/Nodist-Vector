@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package io.github.mhmmtbg.nodist.ui
 
 import androidx.compose.foundation.background
@@ -38,9 +40,14 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.vector.ImageVector
 import io.github.mhmmtbg.nodist.editor.EditorViewModel
-import io.github.mhmmtbg.nodist.model.StrokeAlign
-import io.github.mhmmtbg.nodist.model.BlendMode
 import io.github.mhmmtbg.nodist.model.Artboard
 import io.github.mhmmtbg.nodist.model.Rect
 import io.github.mhmmtbg.nodist.model.RefPoint
@@ -119,7 +126,7 @@ fun TransformToolsDialog(
         title = { Text(tr("Dönüşüm araçları")) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                ChoiceRow(tr("Araç"), kinds.map { it.second to (it.first == kind) }) { kind = kinds[it].first }
+                ChoiceRow(tr("Araç"), kinds.map { it.second to (it.first == kind) }, icons = listOf(AppIcons.Rotate, AppIcons.Scale, AppIcons.Reflect, AppIcons.Shear)) { kind = kinds[it].first }
                 when (kind) {
                     TransformKind.Rotate ->
                         OutlinedTextField(angle, { angle = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text(tr("Açı (derece, saat yönünün tersine)")) }, keyboardOptions = DecimalKeys)
@@ -139,8 +146,8 @@ fun TransformToolsDialog(
                     TransformKind.Reflect -> {
                         OutlinedTextField(axis, { axis = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text(tr("Eksen açısı (derece)")) }, keyboardOptions = DecimalKeys)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(onClick = { axis = "90" }) { Text(tr("Dikey eksen")) }
-                            TextButton(onClick = { axis = "0" }) { Text(tr("Yatay eksen")) }
+                            IconTextButton(AppIcons.Reflect, tr("Dikey eksen")) { axis = "90" }
+                            IconTextButton(AppIcons.Flat, tr("Yatay eksen")) { axis = "0" }
                         }
                     }
                     TransformKind.Shear -> {
@@ -243,19 +250,19 @@ fun ArtboardsDialog(vm: EditorViewModel, onDismiss: () -> Unit, onExport: (Strin
                             style = MaterialTheme.typography.labelMedium,
                             color = AppColors.OnPanelMuted,
                         )
-                        Row(Modifier.horizontalScroll(rememberScrollState())) {
-                            TextButton(onClick = { vm.zoomToArtboard(ab.id); onDismiss() }) { Text(tr("Göster")) }
-                            TextButton(onClick = { renaming = ab.id }) { Text(tr("Adlandır")) }
-                            TextButton(onClick = { resizing = ab.id }) { Text(tr("Boyut…")) }
-                            TextButton(onClick = { vm.duplicateArtboardCmd(ab.id) }) { Text(tr("Çoğalt")) }
-                            TextButton(onClick = { vm.fitArtboardToArtworkCmd(ab.id) }) { Text(tr("Çizime sığdır")) }
-                            TextButton(onClick = { onExport(ab.id) }) { Text(tr("Dışa aktar…")) }
-                            TextButton(onClick = { vm.removeArtboardCmd(ab.id) }, enabled = boards.size > 1) { Text(tr("Sil")) }
+                        FlowRow {
+                            IconTextButton(AppIcons.Fit, tr("Göster")) { vm.zoomToArtboard(ab.id); onDismiss() }
+                            IconTextButton(AppIcons.Rename, tr("Adlandır")) { renaming = ab.id }
+                            IconTextButton(AppIcons.Transform, tr("Boyut…")) { resizing = ab.id }
+                            IconTextButton(AppIcons.Duplicate, tr("Çoğalt")) { vm.duplicateArtboardCmd(ab.id) }
+                            IconTextButton(AppIcons.Artboards, tr("Çizime sığdır")) { vm.fitArtboardToArtworkCmd(ab.id) }
+                            IconTextButton(AppIcons.Export, tr("Dışa aktar…")) { onExport(ab.id) }
+                            IconTextButton(AppIcons.Delete, tr("Sil"), enabled = boards.size > 1) { vm.removeArtboardCmd(ab.id) }
                         }
                     }
                 }
                 HorizontalDivider(color = AppColors.Divider)
-                TextButton(onClick = vm::addArtboardCmd) { Text(tr("Yeni çalışma yüzeyi")) }
+                IconTextButton(AppIcons.Add, tr("Yeni çalışma yüzeyi"), onClick = vm::addArtboardCmd)
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Tamam")) } },
@@ -274,25 +281,19 @@ fun ArtboardsDialog(vm: EditorViewModel, onDismiss: () -> Unit, onExport: (Strin
 @Composable
 fun SelectSameDialog(onDismiss: () -> Unit, onPick: (io.github.mhmmtbg.nodist.model.SameKind) -> Unit) {
     val items = listOf(
-        io.github.mhmmtbg.nodist.model.SameKind.Fill to tr("Aynı dolgu"),
-        io.github.mhmmtbg.nodist.model.SameKind.Stroke to tr("Aynı kontur rengi"),
-        io.github.mhmmtbg.nodist.model.SameKind.FillAndStroke to tr("Aynı dolgu ve kontur"),
-        io.github.mhmmtbg.nodist.model.SameKind.StrokeWidth to tr("Aynı kontur kalınlığı"),
-        io.github.mhmmtbg.nodist.model.SameKind.Opacity to tr("Aynı saydamlık"),
-        io.github.mhmmtbg.nodist.model.SameKind.Type to tr("Aynı tür"),
+        Triple(io.github.mhmmtbg.nodist.model.SameKind.Fill, AppIcons.FillDot, tr("Aynı dolgu")),
+        Triple(io.github.mhmmtbg.nodist.model.SameKind.Stroke, AppIcons.StrokeRing, tr("Aynı kontur rengi")),
+        Triple(io.github.mhmmtbg.nodist.model.SameKind.FillAndStroke, AppIcons.FillStroke, tr("Aynı dolgu ve kontur")),
+        Triple(io.github.mhmmtbg.nodist.model.SameKind.StrokeWidth, AppIcons.StrokeWidth, tr("Aynı kontur kalınlığı")),
+        Triple(io.github.mhmmtbg.nodist.model.SameKind.Opacity, AppIcons.Opacity, tr("Aynı saydamlık")),
+        Triple(io.github.mhmmtbg.nodist.model.SameKind.Type, AppIcons.Shapes, tr("Aynı tür")),
     )
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("Aynısını seç")) },
         text = {
             Column {
-                for ((kind, label) in items) {
-                    Text(
-                        label,
-                        Modifier.fillMaxWidth().clickable(role = Role.Button) { onPick(kind) }.padding(vertical = 12.dp),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                }
+                for ((kind, icon, label) in items) MenuRow(icon, label) { onPick(kind) }
             }
         },
         confirmButton = {},
@@ -336,11 +337,11 @@ fun SwatchesDialog(vm: EditorViewModel, onDismiss: () -> Unit) {
                 }
                 if (sel != null) {
                     Text(swatches[sel].name, style = MaterialTheme.typography.titleSmall)
-                    Row(Modifier.horizontalScroll(rememberScrollState())) {
-                        TextButton(onClick = { vm.applySwatch(sel) }) { Text(tr("Uygula")) }
-                        TextButton(onClick = { renaming = sel }) { Text(tr("Adlandır")) }
-                        TextButton(onClick = { editing = sel }) { Text(tr("Rengi değiştir")) }
-                        TextButton(onClick = { vm.removeSwatchCmd(sel); selected = null }) { Text(tr("Sil")) }
+                    FlowRow {
+                        IconTextButton(AppIcons.FillDot, tr("Uygula")) { vm.applySwatch(sel) }
+                        IconTextButton(AppIcons.Rename, tr("Adlandır")) { renaming = sel }
+                        IconTextButton(AppIcons.Palette, tr("Rengi değiştir")) { editing = sel }
+                        IconTextButton(AppIcons.Delete, tr("Sil")) { vm.removeSwatchCmd(sel); selected = null }
                     }
                     Text(
                         tr("Rengi değiştirmek, belgede o rengi kullanan her yeri de değiştirir."),
@@ -349,10 +350,8 @@ fun SwatchesDialog(vm: EditorViewModel, onDismiss: () -> Unit) {
                     )
                 }
                 HorizontalDivider(color = AppColors.Divider)
-                Row(Modifier.horizontalScroll(rememberScrollState())) {
-                    TextButton(onClick = vm::addSwatchFromCurrent) { Text(tr("Seçili rengi ekle")) }
-                    TextButton(onClick = vm::addDesignColorsAsSwatches) { Text(tr("Belgedeki renkleri ekle")) }
-                }
+                IconTextButton(AppIcons.Add, tr("Seçili rengi ekle"), onClick = vm::addSwatchFromCurrent)
+                IconTextButton(AppIcons.Palette, tr("Belgedeki renkleri ekle"), onClick = vm::addDesignColorsAsSwatches)
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Tamam")) } },
@@ -389,19 +388,13 @@ fun ParamDialog(title: String, labels: List<String>, initial: List<Double>, onDi
 
 /** Seçenek listesi; birine dokunmak [onPick] ile sırasını bildirir. */
 @Composable
-fun PickDialog(title: String, items: List<String>, onDismiss: () -> Unit, onPick: (Int) -> Unit) {
+fun PickDialog(title: String, items: List<Pair<ImageVector, String>>, onDismiss: () -> Unit, selected: Int = -1, onPick: (Int) -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
-                for ((i, label) in items.withIndex()) {
-                    Text(
-                        label,
-                        Modifier.fillMaxWidth().clickable(role = Role.Button) { onPick(i) }.padding(vertical = 12.dp),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                }
+            Column(Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState())) {
+                for ((i, item) in items.withIndex()) MenuRow(item.first, item.second, selected = i == selected) { onPick(i) }
             }
         },
         confirmButton = {},
@@ -409,89 +402,47 @@ fun PickDialog(title: String, items: List<String>, onDismiss: () -> Unit, onPick
     )
 }
 
-private val BlendLabels = listOf(
-    BlendMode.Normal to "Normal", BlendMode.Multiply to "Çarpma", BlendMode.Screen to "Ekran", BlendMode.Overlay to "Bindirme",
-    BlendMode.Darken to "Koyulaştır", BlendMode.Lighten to "Açıklaştır", BlendMode.ColorDodge to "Renk soldur", BlendMode.ColorBurn to "Renk yak",
-    BlendMode.HardLight to "Sert ışık", BlendMode.SoftLight to "Yumuşak ışık", BlendMode.Difference to "Fark", BlendMode.Exclusion to "Dışlama",
-    BlendMode.Hue to "Ton", BlendMode.Saturation to "Doygunluk", BlendMode.Color to "Renk tonu", BlendMode.Luminosity to "Aydınlık",
-)
-
-/**
- * Görünüm ve efektler: karışım modu, gölge, dış kontur, değişken genişlikli kontur, ok uçları, kontur hizası, desen,
- * fırça ve yol üzerine yazı. Sonuçlar düz vektör olarak üretilir.
- */
+/** Simgeli liste satırı (pencerelerdeki seçenek listeleri için). */
 @Composable
-fun AppearanceDialog(vm: EditorViewModel, onDismiss: () -> Unit) {
-    var sub by remember { mutableStateOf<String?>(null) }
-    fun done() { sub = null; onDismiss() }
-    when (sub) {
-        "blend" -> PickDialog(tr("Karışım modu"), BlendLabels.map { tr(it.second) }, onDismiss = { sub = null }) { i ->
-            vm.setBlendMode(BlendLabels[i].first)
-            done()
+internal fun MenuRow(
+    icon: ImageVector,
+    label: String,
+    detail: String? = null,
+    selected: Boolean = false,
+    enabled: Boolean = true,
+    trailing: (@Composable () -> Unit)? = null,
+    onClick: () -> Unit,
+) {
+    val fg = when {
+        !enabled -> AppColors.OnPanelMuted
+        selected -> AppColors.Accent
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(label, color = fg, style = MaterialTheme.typography.bodyLarge)
+            if (detail != null) Text(detail, color = AppColors.OnPanelMuted, style = MaterialTheme.typography.labelMedium)
         }
-        "shadow" -> ParamDialog(tr("Gölge ekle"), listOf(tr("Yatay kayma"), tr("Dikey kayma"), tr("Bulanıklık"), tr("Saydamlık (%)")), listOf(6.0, 6.0, 8.0, 50.0), { sub = null }) { v ->
-            vm.addShadowCmd(v[0], v[1], v[2], v[3].coerceIn(0.0, 100.0))
-            done()
-        }
-        "outer" -> ParamDialog(tr("Dış kontur ekle"), listOf(tr("Kalınlık")), listOf(4.0), { sub = null }) { v ->
-            vm.addOuterStrokeCmd(v[0])
-            done()
-        }
-        "taper" -> ParamDialog(tr("Değişken genişlikli kontur"), listOf(tr("Baştaki kalınlık"), tr("Sondaki kalınlık")), listOf(12.0, 0.0), { sub = null }) { v ->
-            vm.taperStrokeCmd(v[0], v[1])
-            done()
-        }
-        "arrow" -> PickDialog(tr("Ok uçları"), listOf(tr("Sona"), tr("Başa"), tr("İki uca")), onDismiss = { sub = null }) { i ->
-            vm.arrowheadsCmd(atStart = i != 0, atEnd = i != 1)
-            done()
-        }
-        "align" -> PickDialog(tr("Kontur hizası"), listOf(tr("İçeri"), tr("Dışarı")), onDismiss = { sub = null }) { i ->
-            vm.alignStrokeCmd(if (i == 0) StrokeAlign.Inside else StrokeAlign.Outside)
-            done()
-        }
-        "pattern" -> ParamDialog(tr("Desenle doldur"), listOf(tr("Yatay boşluk"), tr("Dikey boşluk")), listOf(0.0, 0.0), { sub = null }) { v ->
-            vm.tilePatternCmd(v[0], v[1])
-            done()
-        }
-        "mesh" -> ParamDialog(tr("Ağ gradyan"), listOf(tr("Satır sayısı"), tr("Sütun sayısı")), listOf(12.0, 12.0), { sub = null }) { v ->
-            vm.meshGradientCmd(v[0].toInt(), v[1].toInt())
-            done()
-        }
-        "brush" -> ParamDialog(tr("Fırça: şekli yola diz"), listOf(tr("Kalınlık çarpanı")), listOf(1.0), { sub = null }) { v ->
-            vm.artBrushCmd(v[0])
-            done()
-        }
-        else -> AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text(tr("Görünüm ve efektler")) },
-            text = {
-                Column(Modifier.verticalScroll(rememberScrollState())) {
-                    val items = listOf(
-                        "blend" to tr("Karışım modu…"),
-                        "shadow" to tr("Gölge ekle…"),
-                        "outer" to tr("Dış kontur ekle…"),
-                        "taper" to tr("Değişken genişlikli kontur…"),
-                        "arrow" to tr("Ok uçları…"),
-                        "align" to tr("Kontur hizası…"),
-                        "pattern" to tr("Desenle doldur…"),
-                        "brush" to tr("Fırça: şekli yola diz…"),
-                        "mesh" to tr("Ağ gradyan…"),
-                        "opmask" to tr("Opaklık maskesi (gradyanlı üst şekil)"),
-                        "textpath" to tr("Metni yola diz"),
-                    )
-                    for ((id, label) in items) {
-                        Text(
-                            label,
-                            Modifier.fillMaxWidth().clickable(role = Role.Button) {
-                                if (id == "textpath") { vm.textOnPathCmd(); onDismiss() } else if (id == "opmask") { vm.opacityMaskCmd(); onDismiss() } else sub = id
-                            }.padding(vertical = 12.dp),
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Vazgeç")) } },
-        )
+        trailing?.invoke()
+    }
+}
+
+/** Simgeli metin düğmesi. */
+@Composable
+internal fun IconTextButton(icon: ImageVector, label: String, enabled: Boolean = true, onClick: () -> Unit) {
+    TextButton(onClick = onClick, enabled = enabled, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(label, maxLines = 1)
     }
 }

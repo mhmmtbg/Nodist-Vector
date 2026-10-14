@@ -17,6 +17,7 @@ import io.github.mhmmtbg.nodist.model.TextNode
 import io.github.mhmmtbg.nodist.model.transformedBy
 import io.github.mhmmtbg.nodist.model.withLocked
 import io.github.mhmmtbg.nodist.model.withVisible
+import io.github.mhmmtbg.nodist.model.withEffects
 import io.github.mhmmtbg.nodist.model.withName
 import io.github.mhmmtbg.nodist.model.withOpacity
 import io.github.mhmmtbg.nodist.pdf.ClipLink
@@ -303,7 +304,9 @@ object AiImporter {
                 val kids = build(item.items, item.clip)
                 val text = item.text
                 val only = kids.singleOrNull()
+                val live = item.live
                 when {
+                    live != null -> liveNode(item, live, kids)
                     text != null -> textNode(item, text, kids.firstOrNull())
                     kids.isEmpty() -> null
                     item.unwrapSingle && only != null -> {
@@ -330,6 +333,14 @@ object AiImporter {
                     )
                 }
             }
+        }
+
+        /** Canlı efektli nesne: gizli kaynak düğüm ve yuvalar okunur, görünüm (son çocuklar) atılır; efektler yeniden kurulur. */
+        private fun liveNode(item: Container, live: io.github.mhmmtbg.nodist.pdf.LiveProps, kids: List<Node>): Node? {
+            val source = kids.firstOrNull() ?: return null
+            val slots = kids.drop(1).take(live.slots).map { it.withVisible(true) }
+            val effects = io.github.mhmmtbg.nodist.model.EffectCodec.decode(live.effects, slots)
+            return source.withEffects(effects).withName(item.name).withVisible(live.visible).withLocked(live.locked)
         }
 
         private fun textNode(item: Container, t: io.github.mhmmtbg.nodist.pdf.TextProps, sample: Node?): Node {

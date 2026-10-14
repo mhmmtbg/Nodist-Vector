@@ -174,8 +174,8 @@ private fun DocumentCard(host: PlatformHost, doc: StoredDocument, current: Boole
                     Icon(AppIcons.More, null, Modifier.size(20.dp), tint = AppColors.OnPanel)
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    DropdownMenuItem(text = { Text(tr("Aç")) }, onClick = { menu = false; onOpen() })
-                    DropdownMenuItem(text = { Text(tr("Sil")) }, onClick = { menu = false; onDelete() })
+                    DropdownMenuItem(text = { Text(tr("Aç")) }, leadingIcon = { Icon(AppIcons.Open, contentDescription = null, modifier = Modifier.size(20.dp)) }, onClick = { menu = false; onOpen() })
+                    DropdownMenuItem(text = { Text(tr("Sil")) }, leadingIcon = { Icon(AppIcons.Delete, contentDescription = null, modifier = Modifier.size(20.dp)) }, onClick = { menu = false; onDelete() })
                 }
             }
         }

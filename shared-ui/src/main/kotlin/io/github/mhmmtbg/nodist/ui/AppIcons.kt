@@ -274,4 +274,100 @@ object AppIcons {
     val Legend by lazy {
         icon("Legend", r(3, 5, 6, 6) + r(11, 6, 10, 1.6) + r(11, 8.6, 7, 1.6) + r(3, 13, 6, 6) + r(11, 14, 10, 1.6) + r(11, 16.6, 7, 1.6))
     }
+
+    // ---- Canlı efektler ----
+    val RoundCorner by lazy { icon("RoundCorner", "M4,20 V4 H13 A7,7 0 0 1 20,11 V20 Z M6,18 H18 V11 A5,5 0 0 0 13,6 H6 Z", evenOdd = true) }
+    val Taper by lazy { icon("Taper", "M2.5,18.5 Q10,10 21.5,3.5 Q13.5,12.5 5.5,21.5 Z") }
+    val Arrow by lazy { icon("Arrow", "M3,19.6 L14.6,8 L11.5,4.9 L20,4 L19.1,12.5 L16,9.4 L4.4,21 Z") }
+    val ArrowBoth by lazy { icon("ArrowBoth", "M3,21 L3.9,13.5 L6.6,16.2 L16.2,6.6 L13.5,3.9 L21,3 L20.1,10.5 L17.4,7.8 L7.8,17.4 L10.5,20.1 Z") }
+    val StrokeInside by lazy { icon("StrokeInside", frame(3.0, 3.0, 18.0, 18.0, 1.0) + frame(5.0, 5.0, 14.0, 14.0, 3.0)) }
+    val StrokeOutside by lazy { icon("StrokeOutside", frame(2.0, 2.0, 20.0, 20.0, 3.0) + frame(7.0, 7.0, 10.0, 10.0, 1.0)) }
+    val OuterStroke by lazy { icon("OuterStroke", frame(2.5, 2.5, 19.0, 19.0, 2.0) + r(7, 7, 10, 10)) }
+    val Shadow by lazy { icon("Shadow", r(3, 3, 13, 13) + "M17.5,7.5 H21 V21 H7.5 V17.5 H17.5 Z") }
+    val Mesh by lazy {
+        icon("Mesh", frame(3.0, 3.0, 18.0, 18.0, 1.5) + r(8.25, 3, 1.5, 18) + r(14.25, 3, 1.5, 18) + r(3, 8.25, 18, 1.5) + r(3, 14.25, 18, 1.5) + r(3, 3, 6, 6))
+    }
+    val OpacityMask by lazy { icon("OpacityMask", frame(3.0, 3.0, 18.0, 18.0, 1.5) + r(3, 3, 9, 18) + r(13.5, 4.5, 3, 3) + r(16.5, 7.5, 3, 3) + r(13.5, 10.5, 3, 3) + r(16.5, 13.5, 3, 3) + r(13.5, 16.5, 3, 3)) }
+    val Pattern by lazy {
+        icon("Pattern", (0..2).joinToString("") { y -> (0..2).joinToString("") { x -> circle(5 + x * 7, 5.0 + y * 7, 2.2) } })
+    }
+    val Brush by lazy {
+        icon(
+            "Brush",
+            "M7,14c-1.66,0 -3,1.34 -3,3 0,1.31 -1.16,2 -2,2 0.92,1.22 2.49,2 4,2 2.21,0 4,-1.79 4,-4 0,-1.66 -1.34,-3 -3,-3z" +
+                "M20.71,4.63l-1.34,-1.34c-0.39,-0.39 -1.02,-0.39 -1.41,0L9,12.25 11.75,15l8.96,-8.96c0.39,-0.39 0.39,-1.02 0,-1.41z",
+        )
+    }
+    val TextPath by lazy { icon("TextPath", "M2.5,19 Q12,8 21.5,19 L21.5,21.5 Q12,10.5 2.5,21.5 Z " + r(7, 2.5, 10, 2) + r(11, 2.5, 2, 9)) }
+    val Blend by lazy { icon("Blend", circle(9, 12.0, 6.5) + circle(15, 12.0, 6.5), evenOdd = true) }
+    val Bake by lazy { icon("Bake", frame(3.0, 3.0, 18.0, 18.0, 1.5) + "M12,6.5 L17,11.5 H13.5 V17.5 H10.5 V11.5 H7 Z") }
+    val Effects by lazy { icon("Effects", "M9,2 L10.8,7.2 L16,9 L10.8,10.8 L9,16 L7.2,10.8 L2,9 L7.2,7.2 Z M17.5,12 L18.6,15.4 L22,16.5 L18.6,17.6 L17.5,21 L16.4,17.6 L13,16.5 L16.4,15.4 Z") }
+    val Edit get() = Pencil
+    val CutTools get() = Scissors
+
+    // ---- Dosya menüsü ----
+    val Gallery by lazy { icon("Gallery", r(3, 3, 8, 8) + r(13, 3, 8, 8) + r(3, 13, 8, 8) + r(13, 13, 8, 8)) }
+    val NewDoc by lazy {
+        icon("NewDoc", "M5,2 H14 L20,8 V22 H5 Z M7,4 V20 H18 V9.5 H12.5 V4 Z M11.5,11 h2 v2.5 h2.5 v2 h-2.5 v2.5 h-2 v-2.5 h-2.5 v-2 h2.5 z", evenOdd = true)
+    }
+    val Open by lazy {
+        icon("Open", "M20,6h-8l-2,-2H4C2.9,4 2.01,4.9 2.01,6L2,18c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V8c0,-1.1 -0.9,-2 -2,-2zM20,18H4V8h16v10z")
+    }
+    val Sample by lazy {
+        icon("Sample", "M5,2 H14 L20,8 V22 H5 Z M7,4 V20 H18 V9.5 H12.5 V4 Z M12.5,10.5 L13.6,13.4 L16.6,13.5 L14.2,15.4 L15.1,18.4 L12.5,16.6 L9.9,18.4 L10.8,15.4 L8.4,13.5 L11.4,13.4 Z", evenOdd = true)
+    }
+    val Save by lazy {
+        icon("Save", "M17,3H5c-1.11,0 -2,0.9 -2,2v14c0,1.1 0.89,2 2,2h14c1.1,0 2,-0.9 2,-2V7l-4,-4zM12,19c-1.66,0 -3,-1.34 -3,-3s1.34,-3 3,-3 3,1.34 3,3 -1.34,3 -3,3zM15,9H5V5h10v4z")
+    }
+    val SaveAs by lazy {
+        icon("SaveAs", "M15,3H5c-1.11,0 -2,0.9 -2,2v14c0,1.1 0.89,2 2,2h6v-2.5l7,-7V7l-3,-4zM13,9H5V5h8v4z M21.7,13.3 l-1,-1 c-0.4,-0.4 -1,-0.4 -1.4,0 L13,18.6 V21 h2.4 l6.3,-6.3 c0.4,-0.4 0.4,-1 0,-1.4 z")
+    }
+    val Artboards by lazy { icon("Artboards", "M17,15h2V7c0,-1.1 -0.9,-2 -2,-2H9v2h8v8zM7,17V1H5v4H1v2h4v10c0,1.1 0.9,2 2,2h10v4h2v-4h4v-2H7z") }
+    val SelectAll by lazy {
+        val d = StringBuilder()
+        for (x in listOf(3.0, 8.5, 14.0)) { d.append(r(x, 3, 3.5, 1.5)); d.append(r(x + 0.5, 19.5, 3.5, 1.5)) }
+        for (y in listOf(6.5, 12.0)) { d.append(r(3, y, 1.5, 3.5)); d.append(r(19.5, y + 0.5, 1.5, 3.5)) }
+        d.append(r(19.5, 3, 1.5, 2)); d.append(r(3, 17.5, 1.5, 2))
+        icon("SelectAll", d.toString() + r(8, 8, 8, 8))
+    }
+    val Magnet by lazy { icon("Magnet", "M3,3 h5 v3.5 h-5 z M16,3 h5 v3.5 h-5 z M3,8 h5 v4 a4,4 0 0 0 8,0 v-4 h5 v4 a9,9 0 0 1 -18,0 z") }
+    val Ruler by lazy {
+        icon("Ruler", frame(2.0, 7.0, 20.0, 10.0, 1.5) + r(5.5, 7, 1.5, 4.5) + r(9.5, 7, 1.5, 6) + r(13.5, 7, 1.5, 4.5) + r(17.5, 7, 1.5, 6))
+    }
+    val Grid by lazy { icon("Grid", frame(3.0, 3.0, 18.0, 18.0, 1.5) + r(8.25, 3, 1.5, 18) + r(14.25, 3, 1.5, 18) + r(3, 8.25, 18, 1.5) + r(3, 14.25, 18, 1.5)) }
+    val Guides by lazy { icon("Guides", r(2, 6.5, 20, 1.5) + r(16, 2, 1.5, 20) + frame(4.0, 10.0, 9.0, 9.0, 1.5)) }
+    val OutlineView by lazy { icon("OutlineView", frame(3.0, 3.0, 11.0, 11.0, 1.2) + circle(15, 15.0, 6.5) + circle(15, 15.0, 5.3), evenOdd = true) }
+    val Help by lazy {
+        icon(
+            "Help",
+            "M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM13,19h-2v-2h2v2zM15.07,11.25l-0.9,0.92C13.45,12.9 13,13.5 13,15h-2v-0.5" +
+                "c0,-1.1 0.45,-2.1 1.17,-2.83l1.24,-1.26c0.37,-0.36 0.59,-0.86 0.59,-1.41 0,-1.1 -0.9,-2 -2,-2s-2,0.9 -2,2H8c0,-2.21 1.79,-4 4,-4s4,1.79 4,4" +
+                "c0,0.88 -0.36,1.68 -0.93,2.25z",
+        )
+    }
+    val Language by lazy {
+        icon("Language", circle(12, 12.0, 9.5) + circle(12, 12.0, 8) + "M12,2.5 a4,9.5 0 1 0 0.01,0 z M12,4 a2.6,8 0 1 0 0.01,0 z " + r(2.5, 11.25, 19, 1.5), evenOdd = true)
+    }
+    val Coffee by lazy {
+        icon("Coffee", "M20,3H4v10c0,2.21 1.79,4 4,4h6c2.21,0 4,-1.79 4,-4v-3h2c1.11,0 2,-0.89 2,-2V5c0,-1.11 -0.89,-2 -2,-2zM20,8h-2V5h2v3zM4,19h16v2H4z")
+    }
+
+    // ---- Seçim çubuğu ve pencereler ----
+    val SpacingH by lazy { icon("SpacingH", r(3, 4, 2, 16) + r(19, 4, 2, 16) + "M7,12 l3.5,-3.5 v2.5 h3 v-2.5 l3.5,3.5 l-3.5,3.5 v-2.5 h-3 v2.5 z") }
+    val SpacingV by lazy { icon("SpacingV", r(4, 3, 16, 2) + r(4, 19, 16, 2) + "M12,7 l3.5,3.5 h-2.5 v3 h2.5 l-3.5,3.5 l-3.5,-3.5 h2.5 v-3 h-2.5 z") }
+    val Target by lazy {
+        icon("Target", circle(12, 12.0, 8) + circle(12, 12.0, 6.5) + circle(12, 12.0, 2.5) + r(11.25, 1.5, 1.5, 4) + r(11.25, 18.5, 1.5, 4) + r(1.5, 11.25, 4, 1.5) + r(18.5, 11.25, 4, 1.5), evenOdd = true)
+    }
+    val FillDot by lazy { icon("FillDot", circle(12, 12.0, 8)) }
+    val StrokeRing by lazy { icon("StrokeRing", circle(12, 12.0, 8.5) + circle(12, 12.0, 6), evenOdd = true) }
+    val FillStroke by lazy { icon("FillStroke", circle(12, 12.0, 9) + circle(12, 12.0, 7) + circle(12, 12.0, 5), evenOdd = true) }
+    val StrokeWidth by lazy { icon("StrokeWidth", r(3, 5, 18, 1) + r(3, 9, 18, 2) + r(3, 14, 18, 3.5)) }
+    val Opacity by lazy { icon("Opacity", circle(12, 12.0, 9) + circle(12, 12.0, 7.5) + "M12,4.5 A7.5,7.5 0 0 0 12,19.5 Z", evenOdd = true) }
+    val Minus by lazy { icon("Minus", r(5, 11, 14, 2)) }
+    val Plus by lazy { icon("Plus", r(5, 11, 14, 2) + r(11, 5, 2, 14)) }
+    val CornerMark by lazy { icon("CornerMark", "M24,0 L24,24 L0,24 Z") }
+    val Rotate by lazy { icon("Rotate", "M12,4 A8,8 0 1 0 20,12 H17.5 A5.5,5.5 0 1 1 12,6.5 V9.5 L16.5,5.25 L12,1 Z") }
+    val Scale by lazy { icon("Scale", frame(3.0, 9.0, 12.0, 12.0, 1.5) + "M13,3 H21 V11 L18.2,8.2 L13.8,12.6 L11.4,10.2 L15.8,5.8 Z") }
+    val Reflect by lazy { icon("Reflect", r(11.25, 2, 1.5, 20) + "M9.5,5 V19 L2.5,19 Z M14.5,5 L21.5,19 H14.5 Z M16,11.2 V17.5 H19.1 Z", evenOdd = true) }
+    val Shear by lazy { icon("Shear", "M7,5 H22 L17,19 H2 Z M8.2,6.5 L4.1,17.5 H15.8 L19.9,6.5 Z", evenOdd = true) }
 }

@@ -8,6 +8,8 @@ import io.github.mhmmtbg.nodist.model.ImportException
 import io.github.mhmmtbg.nodist.model.ImportResult
 import io.github.mhmmtbg.nodist.model.tr
 import io.github.mhmmtbg.nodist.render.TextOutliner
+import io.github.mhmmtbg.nodist.render.PlatformEffects
+import io.github.mhmmtbg.nodist.model.LiveEffects
 import io.github.mhmmtbg.nodist.svg.SvgExporter
 import io.github.mhmmtbg.nodist.trace.PixelImage
 import io.github.mhmmtbg.nodist.svg.SvgImporter
@@ -27,7 +29,7 @@ abstract class DocumentIo(root: File) {
     val store = DocumentStore(root)
     val fonts = FontStore(root)
 
-    private val exportOptions = AiExporter.Options(outlineText = { TextOutliner.outline(it) })
+    private val exportOptions = AiExporter.Options(outlineText = { TextOutliner.outline(it) }, effects = PlatformEffects.context)
 
     class Opened(val result: ImportResult, val format: ExportFormat)
 
@@ -115,7 +117,8 @@ abstract class DocumentIo(root: File) {
 
     fun encode(doc: Document, format: ExportFormat): ByteArray = when (format) {
         ExportFormat.Nodist, ExportFormat.Ai, ExportFormat.Pdf -> AiExporter.export(doc, exportOptions)
-        ExportFormat.Svg -> SvgExporter.export(doc, outlineText = { TextOutliner.outline(it) }).toByteArray(Charsets.UTF_8)
+        // SVG'ye canlı efektlerin görünümü yazılır (düzenlenebilirlik yalnızca kendi biçimimizde korunur).
+        ExportFormat.Svg -> SvgExporter.export(LiveEffects.expandDocument(doc, PlatformEffects.context), outlineText = { TextOutliner.outline(it) }).toByteArray(Charsets.UTF_8)
         ExportFormat.Png -> renderPng(doc, 4096, transparent = true)
     }
 

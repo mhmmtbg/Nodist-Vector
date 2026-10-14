@@ -1,5 +1,8 @@
 package io.github.mhmmtbg.nodist.ai
 
+import io.github.mhmmtbg.nodist.model.withEffects
+import io.github.mhmmtbg.nodist.model.withLocked
+import io.github.mhmmtbg.nodist.model.withVisible
 import io.github.mhmmtbg.nodist.model.BlendMode
 import io.github.mhmmtbg.nodist.model.Document
 import io.github.mhmmtbg.nodist.model.FillRule
@@ -51,6 +54,11 @@ object AiExporter {
          * otomatik kayıt her seferinde görselleri baştan çözüp sıkıştırmaz.
          */
         val imageCache: MutableMap<ImageData, List<ByteArray>> = java.util.Collections.synchronizedMap(java.util.WeakHashMap()),
+        /**
+         * Canlı efektlerin görünümünü üretmek için platform hizmetleri. Dosyaya hem görünüm (her programın okuduğu
+         * düz vektör) hem de gizli kaynak ve efekt parametreleri yazılır; bu uygulama efektleri düzenlenebilir okur.
+         */
+        val effects: io.github.mhmmtbg.nodist.model.EffectContext = io.github.mhmmtbg.nodist.model.EffectContext(),
     )
 
     /** Dosyanın bilgi sözlüğüne yazılan üretici adı; içe aktarırken "bu dosyayı biz mi yazdık" sorusunu yanıtlar. */
@@ -230,6 +238,10 @@ object AiExporter {
         }
 
         fun node(sb: StringBuilder, node: Node, parent: Matrix) {
+            if (node.effects.isNotEmpty()) {
+                live(sb, node, parent)
+                return
+            }
             // Gizli ya da kilitli nesneler kendi içerik grubuna sarılır: PDF görüntüleyiciler gizliyi göstermez,
             // bu uygulama da durumu geri okur.
             val flagged = !node.visible || node.locked
@@ -240,6 +252,27 @@ object AiExporter {
             }
             emitNode(sb, node, parent)
             if (flagged) sb.append("EMC\n")
+        }
+
+        /**
+         * Canlı efektli nesne: işaretli bir blok içinde önce gizli kaynak nesne ve efektin taşıdığı düğümler (desen
+         * karosu, fırça şekli), sonra efektlerin ürettiği görünüm yazılır. Parametreler bloğun sözlüğündedir.
+         * Yol ve grupların dönüşümü dosyada koordinatlara işlendiği için yerel uzaydaki efekt verisi de taşınır.
+         */
+        fun live(sb: StringBuilder, node: Node, parent: Matrix) {
+            val local = if (node is TextNode) node.effects else node.effects.map { io.github.mhmmtbg.nodist.model.EffectCodec.transformed(it, node.transform) }
+            val (code, slots) = io.github.mhmmtbg.nodist.model.EffectCodec.encode(local)
+            sb.append("/MI << /N ").append(textString(node.name)).append(" /T /Live /E ").append(textString(code))
+                .append(" /SN ").append(slots.size).append(" /V ").append(node.visible).append(" /L ").append(node.locked).append(" >> BDC\n")
+            node(sb, node.withEffects(emptyList()).withVisible(false).withLocked(false), parent)
+            for (slot in slots) node(sb, slot.withVisible(false), parent)
+            val look = try {
+                io.github.mhmmtbg.nodist.model.LiveEffects.expand(node, opt.effects)
+            } catch (e: Throwable) {
+                node.withEffects(emptyList())
+            }
+            node(sb, if (node.visible) look else look.withVisible(false), parent)
+            sb.append("EMC\n")
         }
 
         fun emitNode(sb: StringBuilder, node: Node, parent: Matrix) {

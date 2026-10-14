@@ -389,16 +389,21 @@ private fun LayerRow(vm: EditorViewModel, row: PanelRow.OfLayer, onRename: () ->
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 @Composable
-                fun item(label: String, enabled: Boolean = true, action: () -> Unit) =
-                    DropdownMenuItem(text = { Text(label) }, enabled = enabled, onClick = { menu = false; action() })
-                item(tr("Katmandaki nesneleri seç"), enabled = layer.children.isNotEmpty()) { vm.selectLayerObjects(layer.id) }
-                item(tr("Yeniden adlandır"), action = onRename)
-                item(tr("Öne taşı"), enabled = row.index < row.count - 1) { vm.moveLayer(layer.id, up = true) }
-                item(tr("Arkaya taşı"), enabled = row.index > 0) { vm.moveLayer(layer.id, up = false) }
-                item(tr("Seçimi bu katmana taşı"), enabled = state.selection.isNotEmpty()) { vm.moveSelectionToLayer(layer.id) }
+                fun item(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean = true, action: () -> Unit) =
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        enabled = enabled,
+                        onClick = { menu = false; action() },
+                    )
+                item(AppIcons.SelectAll, tr("Katmandaki nesneleri seç"), enabled = layer.children.isNotEmpty()) { vm.selectLayerObjects(layer.id) }
+                item(AppIcons.Rename, tr("Yeniden adlandır"), action = onRename)
+                item(AppIcons.Up, tr("Öne taşı"), enabled = row.index < row.count - 1) { vm.moveLayer(layer.id, up = true) }
+                item(AppIcons.Down, tr("Arkaya taşı"), enabled = row.index > 0) { vm.moveLayer(layer.id, up = false) }
+                item(AppIcons.Layers, tr("Seçimi bu katmana taşı"), enabled = state.selection.isNotEmpty()) { vm.moveSelectionToLayer(layer.id) }
                 // Çoklu seçimde işaretli katmanlardan biriyse işaretlilerin tümü, değilse yalnızca bu katman dışa aktarılır.
-                item(tr("Dışa aktar…"), enabled = layer.children.isNotEmpty() || layer.id in state.layerSelection) { onExport(vm.layersToExport(layer.id)) }
-                item(tr("Katmanı sil"), enabled = row.count > 1) { vm.deleteLayer(layer.id) }
+                item(AppIcons.Export, tr("Dışa aktar…"), enabled = layer.children.isNotEmpty() || layer.id in state.layerSelection) { onExport(vm.layersToExport(layer.id)) }
+                item(AppIcons.Delete, tr("Katmanı sil"), enabled = row.count > 1) { vm.deleteLayer(layer.id) }
             }
         }
     }

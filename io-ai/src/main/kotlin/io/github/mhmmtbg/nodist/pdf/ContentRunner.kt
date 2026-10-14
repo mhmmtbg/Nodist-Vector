@@ -44,6 +44,8 @@ internal class Container(
     /** Bu uygulamanın yazdığı metin bloğu: içerik ne olursa olsun metin bu özelliklerden kurulur. */
     val text: TextProps? = null,
     val blend: BlendMode = BlendMode.Normal,
+    /** Bu uygulamanın yazdığı canlı efekt bloğu: ilk çocuk kaynak, sonraki [LiveProps.slots] çocuk efekt düğümleridir. */
+    val live: LiveProps? = null,
 ) : Item() {
     val items = ArrayList<Item>()
 }
@@ -64,6 +66,8 @@ internal class TextProps(
     /** Harf aralığı (font boyutunun binde biri). */
     val tracking: Double = 0.0,
 )
+
+internal class LiveProps(val effects: String, val slots: Int, val visible: Boolean, val locked: Boolean)
 
 internal class LayerInfo(val name: String, val visible: Boolean, val locked: Boolean)
 
@@ -369,7 +373,17 @@ internal class ContentRunner(private val file: PdfFile, private val sink: Conten
                     tracking = file.num(d["TR"]) ?: 0.0,
                 )
             }
-            containers += Container(nm, gs.clip, unwrapSingle = kind != "Group", text = text)
+            val live = if (kind == "Live") {
+                LiveProps(
+                    effects = file.string(d["E"])?.text() ?: "",
+                    slots = file.int(d["SN"]) ?: 0,
+                    visible = file.bool(d["V"]) != false,
+                    locked = file.bool(d["L"]) == true,
+                )
+            } else {
+                null
+            }
+            containers += Container(nm, gs.clip, unwrapSingle = kind != "Group" && live == null, text = text, live = live)
             return 2
         }
         return 0
@@ -383,7 +397,7 @@ internal class ContentRunner(private val file: PdfFile, private val sink: Conten
                 flushText()
                 if (containers.isNotEmpty()) {
                     val c = containers.removeAt(containers.size - 1)
-                    if (c.items.isNotEmpty() || c.text != null) emit(c)
+                    if (c.items.isNotEmpty() || c.text != null || c.live != null) emit(c)
                 }
             }
         }

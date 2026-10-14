@@ -22,6 +22,7 @@ import io.github.mhmmtbg.nodist.render.BooleanOp
 import io.github.mhmmtbg.nodist.render.DocumentRenderer
 import io.github.mhmmtbg.nodist.render.PathBoolean
 import io.github.mhmmtbg.nodist.render.SkiaRegionOps
+import io.github.mhmmtbg.nodist.render.PlatformEffects
 import io.github.mhmmtbg.nodist.model.AnchorRef
 import io.github.mhmmtbg.nodist.model.Document
 import io.github.mhmmtbg.nodist.model.GroupNode
@@ -43,6 +44,11 @@ import io.github.mhmmtbg.nodist.model.taperStroke
 import io.github.mhmmtbg.nodist.model.tilePattern
 import io.github.mhmmtbg.nodist.model.withBlendMode
 import io.github.mhmmtbg.nodist.model.baked
+import io.github.mhmmtbg.nodist.model.Effect
+import io.github.mhmmtbg.nodist.model.LiveEffects
+import io.github.mhmmtbg.nodist.model.hasStraightCorners
+import io.github.mhmmtbg.nodist.model.withEffects
+import io.github.mhmmtbg.nodist.model.replaceNode
 import io.github.mhmmtbg.nodist.model.Matrix
 import io.github.mhmmtbg.nodist.model.meshGradient
 import io.github.mhmmtbg.nodist.model.opacityMask
@@ -748,10 +754,13 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
             )
             Tool.RoundedRect -> {
                 val box = Rect.of(d.start, now)
+                // Köşeler canlıdır: çizdikten sonra da "Köşe −/+" ya da Görünüm panelinden değiştirilebilir.
+                val radius = Math.round(minOf(box.width, box.height) * s.cornerRatio * 10) / 10.0
                 PathNode(
                     id = d.nodeId, name = tr("Yuvarlak dikdörtgen"),
-                    subpaths = listOf(Shapes.roundedRect(box, minOf(box.width, box.height) * s.cornerRatio)),
+                    subpaths = listOf(Shapes.rect(box)),
                     fill = fill, stroke = stroke, opacity = s.opacity,
+                    effects = if (radius > 0.0) listOf(Effect.RoundCorners(radius)) else emptyList(),
                 )
             }
             Tool.Polygon, Tool.Star -> {
@@ -1361,118 +1370,200 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
         commit(state.selection.fold(present) { d, id -> d.updateNode(id) { it.withBlendMode(mode) } })
     }
 
-    private fun applyEffect(failMessage: String, f: (Document) -> Pair<Document, Set<String>>?) {
-        val r = tryOps { f(present) }
-        if (r == null) {
+    // ---- Canlı efektler -----------------------------------------------------------
+
+    /** Seçimdeki tek nesne (efekt listesi panelde yalnızca tek nesne için gösterilir). */
+    fun singleSelected(): Node? = state.selection.singleOrNull()?.let { present.findNode(it) }
+
+    /**
+     * Seçili nesnelere efekt ekler; aynı türden efekt varsa yerine geçer (parametreler güncellenir).
+     * [accept] efektin o nesneye uygun olup olmadığını söyler.
+     */
+    fun addEffect(effect: Effect, failMessage: String = "Bu efekt seçili nesnelere uygulanamaz", accept: (Node) -> Boolean = { true }) {
+        var doc = present
+        var changed = false
+        for (id in state.selection) {
+            val n = doc.findNode(id) ?: continue
+            if (!accept(n)) continue
+            doc = doc.updateNode(id) { it.withEffects(replaceKind(it.effects, effect)) }
+            changed = true
+        }
+        if (!changed) {
             state = state.copy(message = tr(failMessage))
             return
         }
-        commit(r.first) { it.withSelection(r.second) }
+        commit(doc)
     }
 
-    /** Seçilenlerin arkasına yumuşak gölge koyar; [opacityPercent] 0–100. */
-    fun addShadowCmd(dx: Double, dy: Double, blur: Double, opacityPercent: Double) = applyEffect("Gölge eklenemedi (yol, metin ya da grup seçin)") { d ->
-        d.dropShadow(state.selection, dx, dy, blur.coerceAtLeast(0.0), Rgba.Black, opacityPercent / 100.0)?.let { it.first to it.second.toSet() }
+    private fun replaceKind(list: List<Effect>, e: Effect): List<Effect> {
+        val i = list.indexOfFirst { it::class == e::class }
+        return if (i < 0) list + e else list.toMutableList().also { it[i] = e }
     }
 
-    fun addOuterStrokeCmd(width: Double) = applyEffect("Dış kontur eklenemedi (yol seçin, kalınlık sıfırdan büyük olsun)") { d ->
-        d.addOuterStroke(state.selection, width, state.stroke ?: state.fill ?: Rgba.Black)?.let { it.first to it.second.toSet() }
+    /** [nodeId] nesnesinin [index] sıradaki efektini değiştirir; [done] yanlışsa yalnızca önizlenir. */
+    fun updateEffect(nodeId: String, index: Int, effect: Effect, done: Boolean = true) {
+        val doc = present.updateNode(nodeId) { n -> if (index in n.effects.indices) n.withEffects(n.effects.toMutableList().also { it[index] = effect }) else n }
+        if (done) commit(doc) else state = state.copy(preview = doc)
     }
 
-    fun taperStrokeCmd(startWidth: Double, endWidth: Double) = applyEffect("Açık bir yol seçin") { d ->
-        val id = state.selection.singleOrNull() ?: return@applyEffect null
-        d.taperStroke(id, startWidth.coerceAtLeast(0.0), endWidth.coerceAtLeast(0.0))?.let { it.first to setOf(it.second) }
+    fun removeEffect(nodeId: String, index: Int) {
+        commit(present.updateNode(nodeId) { n -> if (index in n.effects.indices) n.withEffects(n.effects.filterIndexed { i, _ -> i != index }) else n })
     }
 
-    fun arrowheadsCmd(atStart: Boolean, atEnd: Boolean) = applyEffect("Ok ucu için konturlu, açık bir yol seçin") { d ->
-        var doc = d
+    /** Görünümü genişlet: efektler kalıcı olarak düz vektöre çevrilir (artık düzenlenemez). */
+    fun expandAppearance() {
+        var doc = present
         val made = LinkedHashSet<String>()
         for (id in state.selection) {
-            val r = doc.addArrowheads(id, atStart, atEnd, 4.0) ?: continue
-            doc = r.first
-            made += r.second
+            val n = doc.findNode(id) ?: continue
+            if (!LiveEffects.hasEffects(n)) continue
+            val out = LiveEffects.expandDeep(n, PlatformEffects.context)
+            val keep = if (out.id == n.id) out else out.withName(n.name)
+            doc = doc.replaceNode(id) { listOf(keep) }
+            made += keep.id
         }
-        if (made.isEmpty()) null else doc to made
+        if (made.isEmpty()) {
+            state = state.copy(message = tr("Seçimde canlı efekt yok"))
+            return
+        }
+        commit(doc) { it.withSelection(made) }
     }
 
-    fun alignStrokeCmd(align: StrokeAlign) = applyEffect("Kontur hizası için konturlu, kapalı bir yol seçin") { d ->
-        var doc = d
-        val made = LinkedHashSet<String>()
+    /** Köşe yarıçapı: seçili yollarda canlı köşe yuvarlamayı kutunun kısa kenarının %5'i kadar değiştirir. */
+    fun adjustSelectionCorners(sign: Int) {
+        var doc = present
+        var last = 0.0
+        var changed = false
         for (id in state.selection) {
-            val r = doc.alignStroke(id, align, regionOps()) ?: continue
-            doc = r.first
-            made += r.second
+            val n = doc.findNode(id) as? PathNode ?: continue
+            if (!n.hasStraightCorners()) continue
+            val box = n.bounds() ?: continue
+            val step = (minOf(box.width, box.height) * 0.05).coerceAtLeast(0.5)
+            val cur = n.effects.filterIsInstance<Effect.RoundCorners>().firstOrNull()?.radius ?: 0.0
+            val next = (cur + sign * step).coerceIn(0.0, minOf(box.width, box.height) / 2)
+            val r = Math.round(next * 10) / 10.0
+            last = r
+            val list = if (r <= 0.0) n.effects.filterNot { it is Effect.RoundCorners } else replaceKind(n.effects, Effect.RoundCorners(r))
+            doc = doc.updateNode(id) { it.withEffects(list) }
+            changed = true
         }
-        if (made.isEmpty()) null else doc to made
+        if (!changed) {
+            state = state.copy(message = tr("Köşe yuvarlama için düz köşeli bir yol seçin"))
+            return
+        }
+        commit(doc) { it.copy(message = tr("Köşe yarıçapı: %s", fmt(last))) }
     }
 
-    /** En üstteki seçili kapalı yolu, diğer seçili nesnelerden oluşan karoyla döşer. */
-    fun tilePatternCmd(gapX: Double, gapY: Double) = applyEffect("Desen için en az iki nesne seçin: en üstteki kapalı yol doldurulur, diğerleri karo olur (en çok 2500 karo)") { d ->
-        val ordered = d.layers.flatMap { it.children }.filter { it.id in state.selection }
-        val target = ordered.lastOrNull() as? PathNode ?: return@applyEffect null
-        d.tilePattern(target.id, ordered.dropLast(1).map { it.id }.toSet(), gapX, gapY)?.let { it.first to setOf(it.second) }
-    }
+    private fun fmt(v: Double): String = if (v == Math.rint(v)) v.toLong().toString() else String.format(java.util.Locale.ROOT, "%.1f", v)
 
-    /** Seçili kapalı şekli, seçili açık yolun boyunca esnetir (sanat fırçası). */
-    fun artBrushCmd(thickness: Double) = applyEffect("Fırça için bir kapalı şekil ve bir açık yol seçin") { d ->
-        val paths = state.selection.mapNotNull { d.findNode(it) as? PathNode }
-        if (paths.size != 2 || state.selection.size != 2) return@applyEffect null
-        val guide = paths.firstOrNull { p -> p.subpaths.any { !it.closed } } ?: return@applyEffect null
-        val shape = paths.first { it.id != guide.id }
-        d.artBrush(shape.id, guide.id, thickness.coerceAtLeast(0.05))?.let { it.first to setOf(it.second) }
-    }
+    /** Seçili yolun köşe yarıçapı (canlı köşe yuvarlama yoksa `null`). */
+    fun selectedCornerRadius(): Double? = (singleSelected() as? PathNode)?.effects?.filterIsInstance<Effect.RoundCorners>()?.firstOrNull()?.radius
+
+    private fun isPath(n: Node) = n is PathNode
+    private fun isOpenStroked(n: Node) = n is PathNode && n.stroke != null && n.subpaths.any { !it.closed }
+    private fun isClosedPath(n: Node) = n is PathNode && n.subpaths.any { it.closed }
+
+    fun addShadowCmd(dx: Double, dy: Double, blur: Double, opacityPercent: Double) =
+        addEffect(Effect.Shadow(dx, dy, blur.coerceAtLeast(0.0), (opacityPercent / 100.0).coerceIn(0.0, 1.0)), "Gölge eklenemedi (yol, metin ya da grup seçin)") { it !is ImageNode }
+
+    fun addOuterStrokeCmd(width: Double) =
+        addEffect(Effect.OuterStroke(width.coerceAtLeast(0.1), state.stroke ?: state.fill ?: Rgba.Black), "Dış kontur eklenemedi (yol seçin, kalınlık sıfırdan büyük olsun)", ::isPath)
+
+    fun taperStrokeCmd(startWidth: Double, endWidth: Double) =
+        addEffect(Effect.Taper(startWidth.coerceAtLeast(0.0), endWidth.coerceAtLeast(0.0)), "Açık bir yol seçin") { it is PathNode && it.subpaths.any { sp -> !sp.closed } }
+
+    fun arrowheadsCmd(atStart: Boolean, atEnd: Boolean, scale: Double = 4.0) =
+        addEffect(Effect.Arrowheads(atStart, atEnd, scale.coerceIn(0.5, 40.0)), "Ok ucu için konturlu, açık bir yol seçin", ::isOpenStroked)
+
+    fun alignStrokeCmd(align: StrokeAlign) =
+        addEffect(Effect.AlignStroke(align), "Kontur hizası için konturlu, kapalı bir yol seçin") { isClosedPath(it) && (it as PathNode).stroke != null }
+
+    fun roundCornersCmd(radius: Double) =
+        addEffect(Effect.RoundCorners(radius.coerceAtLeast(0.0)), "Köşe yuvarlama için düz köşeli bir yol seçin") { it is PathNode && it.hasStraightCorners() || it is GroupNode }
+
+    fun offsetEffectCmd(distance: Double) =
+        addEffect(Effect.OffsetPath(distance), "Ötelenemedi: kapalı bir yol seçin") { isClosedPath(it) || it is GroupNode }
 
     /**
-     * Ağ gradyan: seçili kapalı yolu hücrelere böler. Köşe renkleri belgedeki ilk dört renk örneğidir;
-     * örnek yoksa mevcut dolgu ve kontur renkleri kullanılır.
+     * Ağ gradyan: köşe renkleri belgedeki ilk dört renk örneğidir; örnek yoksa mevcut dolgu ve kontur renkleri kullanılır.
      */
-    fun meshGradientCmd(rows: Int, cols: Int) = applyEffect("Ağ gradyan için kapalı bir yol seçin") { d ->
-        val id = state.selection.singleOrNull() ?: return@applyEffect null
-        val sw = d.swatches.map { it.color }
+    fun meshGradientCmd(rows: Int, cols: Int) {
+        val sw = present.swatches.map { it.color }
         val a = state.fill ?: Rgba.rgb(0xFF9A3C)
         val b = state.stroke ?: Rgba.rgb(0x7950F2)
-        val c = sw.getOrNull(0) ?: a
-        val e = sw.getOrNull(1) ?: b
-        val f = sw.getOrNull(2) ?: b
-        val g = sw.getOrNull(3) ?: a
-        d.meshGradient(id, rows, cols, c, e, f, g)?.let { it.first to setOf(it.second) }
+        addEffect(
+            Effect.Mesh(rows.coerceIn(2, 40), cols.coerceIn(2, 40), sw.getOrNull(0) ?: a, sw.getOrNull(1) ?: b, sw.getOrNull(2) ?: b, sw.getOrNull(3) ?: a),
+            "Ağ gradyan için kapalı bir yol seçin",
+            ::isClosedPath,
+        )
     }
 
-    /** Opaklık maskesi: en üstteki seçili gradyanlı şekil, diğer seçili nesnenin saydamlığını belirler. */
-    fun opacityMaskCmd() = applyEffect("Maske için iki nesne seçin: en üstteki doğrusal gradyanlı şekil maske olur (beyaz görünür, siyah gizler)") { d ->
-        val ordered = d.layers.flatMap { it.children }.filter { it.id in state.selection }
-        if (ordered.size != 2) return@applyEffect null
-        d.opacityMask(ordered[1].id, ordered[0].id)?.let { it.first to setOf(it.second) }
+    /** Alttan üste sıralı, üst düzey seçili nesneler. */
+    private fun orderedSelection(): List<Node> = present.layers.flatMap { it.children }.filter { it.id in state.selection }
+
+    /** Desen: en üstteki seçili kapalı yol, diğer seçili nesnelerden oluşan karoyla canlı olarak döşenir. */
+    fun tilePatternCmd(gapX: Double, gapY: Double) {
+        val ordered = orderedSelection()
+        val target = ordered.lastOrNull() as? PathNode
+        if (ordered.size < 2 || target == null || !isClosedPath(target) || ordered.size != state.selection.size) {
+            state = state.copy(message = tr("Desen için en az iki nesne seçin: en üstteki kapalı yol doldurulur, diğerleri karo olur (en çok 2500 karo)"))
+            return
+        }
+        val tiles = ordered.dropLast(1)
+        val tile = tiles.singleOrNull() ?: GroupNode(name = "Karo", children = tiles)
+        var doc = present
+        for (t in tiles) doc = doc.removeNode(t.id)
+        doc = doc.updateNode(target.id) { it.withEffects(replaceKind(it.effects, Effect.Pattern(tile, gapX, gapY))) }
+        commit(doc) { it.withSelection(setOf(target.id)) }
     }
 
-    /** Seçili metni, seçili açık yolun boyunca dizer; metin yola çevrilir, yol yerinde kalır. */
+    /** Sanat fırçası: seçili kapalı şekil, seçili açık yolun boyunca canlı olarak esner (şekil yola aktarılır). */
+    fun artBrushCmd(thickness: Double) {
+        val paths = state.selection.mapNotNull { present.findNode(it) as? PathNode }
+        val guide = paths.firstOrNull { p -> p.subpaths.any { !it.closed } }
+        val art = paths.firstOrNull { it.id != guide?.id }
+        if (paths.size != 2 || state.selection.size != 2 || guide == null || art == null) {
+            state = state.copy(message = tr("Fırça için bir kapalı şekil ve bir açık yol seçin"))
+            return
+        }
+        val doc = present.removeNode(art.id).updateNode(guide.id) {
+            it.withEffects(replaceKind(it.effects, Effect.ArtBrush(art.baked().copy(effects = emptyList()), thickness.coerceAtLeast(0.05))))
+        }
+        commit(doc) { it.withSelection(setOf(guide.id)) }
+    }
+
+    /** Yol üzerine yazı: metin düzenlenebilir kalır; yol metnin parçası olur (metinle birlikte taşınır). */
     fun textOnPathCmd() {
         val nodes = state.selection.mapNotNull { present.findNode(it) }
         val text = nodes.filterIsInstance<TextNode>().singleOrNull()
-        val guideNode = (nodes.filterIsInstance<PathNode>().singleOrNull())?.baked()
-        val guide = guideNode?.subpaths?.firstOrNull { it.anchors.size >= 2 }
-        if (nodes.size != 2 || text == null || guide == null) {
+        val guideNode = nodes.filterIsInstance<PathNode>().singleOrNull()
+        if (nodes.size != 2 || text == null || guideNode == null) {
             state = state.copy(message = tr("Bir metin ve bir yol seçin"))
             return
         }
-        val shapes = try { TextOutliner.outline(text) } catch (e: Throwable) { emptyList() }
-        val box = shapes.mapNotNull { it.bounds() }.reduceOrNull(Rect::union)
-        if (box == null) {
-            state = state.copy(message = tr("Bu metin yola çevrilemedi"))
+        // Yol metnin yerel uzayına taşınır.
+        val toLocal = (present.parentMatrix(text.id) * text.transform).inverse()
+        val world = present.parentMatrix(guideNode.id) * guideNode.transform
+        if (toLocal == null) return
+        val guide = guideNode.subpaths.map { it.transformed(toLocal * world) }
+        val doc = present.removeNode(guideNode.id).updateNode(text.id) { it.withEffects(replaceKind(it.effects, Effect.TextPath(guide))) }
+        commit(doc) { it.withSelection(setOf(text.id)) }
+    }
+
+    /** Opaklık maskesi: en üstteki seçili doğrusal gradyanlı şekil, alttaki nesnenin saydamlığını belirler. */
+    fun opacityMaskCmd() {
+        val ordered = orderedSelection()
+        val mask = ordered.getOrNull(1) as? PathNode
+        val grad = mask?.let { (it.baked().fill as? Paint.LinearGradient) }
+        val target = ordered.getOrNull(0)
+        if (ordered.size != 2 || grad == null || target == null) {
+            state = state.copy(message = tr("Maske için iki nesne seçin: en üstteki doğrusal gradyanlı şekil maske olur (beyaz görünür, siyah gizler)"))
             return
         }
-        val k = text.transform.meanScale
-        val scaled = shapes.map { it.transformed(Matrix.scale(k, k)) }
-        val bent = alongPath(scaled, Ruler(guide), originX = box.left * k)
-        if (bent.isEmpty()) {
-            state = state.copy(message = tr("Bir metin ve bir yol seçin"))
-            return
-        }
-        val out = PathNode(
-            id = text.id, name = text.name, opacity = text.opacity, blendMode = text.blendMode,
-            subpaths = bent, fill = text.fill, stroke = text.stroke?.let { it.copy(width = it.width * k) },
-        )
-        commit(present.updateNode(text.id) { out }) { it.withSelection(setOf(text.id)) }
+        val inv = (present.parentMatrix(target.id) * target.transform).inverse() ?: return
+        val local = grad.transformedBy(inv) as Paint.LinearGradient
+        val doc = present.removeNode(mask.id).updateNode(target.id) { it.withEffects(replaceKind(it.effects, Effect.OpacityMask(local))) }
+        commit(doc) { it.withSelection(setOf(target.id)) }
     }
 
     fun openHelp() { state = state.copy(showHelp = true) }

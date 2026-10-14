@@ -17,6 +17,12 @@ sealed interface Node {
 
     /** Nesnenin altındakilerle nasıl karıştığı (Illustrator'daki Saydamlık paneli). */
     val blendMode: BlendMode
+
+    /**
+     * Canlı efektler (gölge, köşe yuvarlama…): nesnenin kendisi değişmez, görünümü çizilirken ve dışa aktarılırken
+     * bu listeden üretilir; parametreler sonradan düzenlenebilir. Bkz. [LiveEffects].
+     */
+    val effects: List<Effect>
 }
 
 /** PDF ve SVG'deki karışım modları. */
@@ -56,6 +62,7 @@ data class PathNode(
     val fill: Paint? = null,
     val stroke: Stroke? = null,
     val fillRule: FillRule = FillRule.NonZero,
+    override val effects: List<Effect> = emptyList(),
 ) : Node
 
 /** Kırpma yolu; grubun yerel uzayındadır. */
@@ -72,6 +79,7 @@ data class GroupNode(
     val children: List<Node>,
     /** Doluysa çocuklar bu yolun içine kırpılır (Illustrator'daki kırpma maskesi). */
     val clip: ClipPath? = null,
+    override val effects: List<Effect> = emptyList(),
 ) : Node
 
 /**
@@ -90,6 +98,7 @@ data class ImageNode(
     override val transform: Matrix = Matrix.Identity,
     override val blendMode: BlendMode = BlendMode.Normal,
     val image: ImageData,
+    override val effects: List<Effect> = emptyList(),
 ) : Node
 
 enum class TextAlign { Start, Center, End }
@@ -127,9 +136,14 @@ data class TextNode(
     val warp: TextWarp? = null,
     /** Harf aralığı, font boyutunun binde biri cinsinden (Illustrator'daki gibi); eksi değer harfleri sıkıştırır. */
     val tracking: Double = 0.0,
+    override val effects: List<Effect> = emptyList(),
 ) : Node {
     /** Yerel uzaydaki yaklaşık kutu (eğme dahil). */
     fun localBounds(): Rect {
+        // Yol üzerine yazı: metin yolun çevresinde durur (harf yüksekliği kadar paylı).
+        effects.firstNotNullOfOrNull { it as? Effect.TextPath }?.let { tp ->
+            tp.guide.mapNotNull { it.bounds() }.reduceOrNull(Rect::union)?.let { return it.inflate(fontSize) }
+        }
         val flat = flatBounds()
         return warp?.bounds(flat) ?: flat
     }
@@ -219,6 +233,13 @@ fun Node.withBlendMode(mode: BlendMode): Node = when (this) {
     is GroupNode -> copy(blendMode = mode)
     is ImageNode -> copy(blendMode = mode)
     is TextNode -> copy(blendMode = mode)
+}
+
+fun Node.withEffects(effects: List<Effect>): Node = when (this) {
+    is PathNode -> copy(effects = effects)
+    is GroupNode -> copy(effects = effects)
+    is ImageNode -> copy(effects = effects)
+    is TextNode -> copy(effects = effects)
 }
 
 fun Node.withOpacity(opacity: Double): Node = when (this) {

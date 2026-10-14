@@ -329,9 +329,9 @@ fun Document.tilePattern(targetId: String, tileIds: Set<String>, gapX: Double, g
 fun Document.outlineView(lineColor: Rgba = Rgba.Black, lineWidth: Double = 1.0): Document {
     val paint = Paint.Solid(lineColor)
     fun conv(n: Node): Node = when (n) {
-        is PathNode -> n.copy(fill = null, stroke = Stroke(paint, lineWidth), opacity = 1.0, blendMode = BlendMode.Normal)
-        is GroupNode -> n.copy(children = n.children.map(::conv), opacity = 1.0, blendMode = BlendMode.Normal)
-        is TextNode -> n.copy(fill = null, stroke = Stroke(paint, lineWidth), opacity = 1.0, blendMode = BlendMode.Normal)
+        is PathNode -> n.copy(fill = null, stroke = Stroke(paint, lineWidth), opacity = 1.0, blendMode = BlendMode.Normal, effects = emptyList())
+        is GroupNode -> n.copy(children = n.children.map(::conv), opacity = 1.0, blendMode = BlendMode.Normal, effects = emptyList())
+        is TextNode -> n.copy(fill = null, stroke = Stroke(paint, lineWidth), opacity = 1.0, blendMode = BlendMode.Normal, effects = emptyList())
         is ImageNode -> n
     }
     return copy(layers = layers.map { l -> l.copy(children = l.children.map(::conv)) })

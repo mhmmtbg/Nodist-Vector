@@ -120,6 +120,12 @@ class DocumentRenderer {
     /** Tek bir düğümü (ve altındakileri) çizer. */
     fun drawNode(canvas: Canvas, node: Node) {
         if (!node.visible || node.opacity <= 0.0) return
+        if (node.effects.isNotEmpty()) {
+            // Canlı efektler: görünüm efekt parametrelerinden üretilip çizilir; nesnenin kendisi değişmez.
+            val look = PlatformEffects.expanded(node)
+            if (look.effects.isEmpty()) drawNode(canvas, look)
+            return
+        }
         val count = canvas.save()
         if (!node.transform.isIdentity) canvas.concat(toSkia(node.transform))
         when (node) {

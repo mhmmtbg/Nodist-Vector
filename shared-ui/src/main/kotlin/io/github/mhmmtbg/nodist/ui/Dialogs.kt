@@ -54,6 +54,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -499,21 +500,41 @@ fun ColorPickerDialog(initial: Rgba, onDismiss: () -> Unit, onPick: (Rgba) -> Un
 }
 
 @Composable
-internal fun ChoiceRow(title: String, options: List<Pair<String, Boolean>>, onPick: (Int) -> Unit) {
+internal fun ChoiceRow(
+    title: String,
+    options: List<Pair<String, Boolean>>,
+    icons: List<androidx.compose.ui.graphics.vector.ImageVector>? = null,
+    onPick: (Int) -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(title, style = MaterialTheme.typography.labelMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            options.forEachIndexed { i, (label, on) ->
-                Text(
-                    label,
-                    Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (on) AppColors.Accent else AppColors.PanelRaised)
-                        .clickable(role = Role.RadioButton) { onPick(i) }
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
-                    color = if (on) Color(0xFF2B1A0E) else AppColors.OnPanel,
-                    style = MaterialTheme.typography.labelLarge,
-                )
+        // Seçenekler eşit genişlikte; üçten çoksa iki sütunlu ızgaraya dizilir (dar pencerede taşmasın).
+        val perRow = if (options.size > 3) 2 else options.size
+        for (row in options.indices.chunked(perRow)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                for (i in row) {
+                    val (label, on) = options[i]
+                    val fg = if (on) Color(0xFF2B1A0E) else AppColors.OnPanel
+                    Row(
+                        Modifier
+                            .weight(1f)
+                            .heightIn(min = 44.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (on) AppColors.Accent else AppColors.PanelRaised)
+                            .clickable(role = Role.RadioButton) { onPick(i) }
+                            .padding(horizontal = 8.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        icons?.getOrNull(i)?.let {
+                            Icon(it, contentDescription = null, tint = fg, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                        }
+                        Text(label, color = fg, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+                // Son satır eksikse boşluk bırakılır ki düğmeler aynı genişlikte kalsın.
+                repeat(perRow - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }

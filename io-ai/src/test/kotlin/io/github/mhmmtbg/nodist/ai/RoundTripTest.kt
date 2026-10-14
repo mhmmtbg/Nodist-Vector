@@ -285,6 +285,44 @@ class RoundTripTest {
     }
 
     @Test
+    fun liveEffectsStayEditableInOurOwnFiles() {
+        val tile = PathNode(id = "tile", subpaths = listOf(Shapes.ellipse(Rect(0.0, 0.0, 8.0, 8.0))), fill = solid(0xFF0000))
+        val effects = listOf(
+            io.github.mhmmtbg.nodist.model.Effect.RoundCorners(12.0),
+            io.github.mhmmtbg.nodist.model.Effect.Shadow(4.0, 6.0, 5.0, 0.4),
+            io.github.mhmmtbg.nodist.model.Effect.Pattern(tile, 2.0, 2.0),
+        )
+        val box = PathNode(id = "b", name = "Kutu", subpaths = listOf(Shapes.rect(Rect(20.0, 20.0, 120.0, 90.0))), fill = solid(0x2255AA), effects = effects)
+        val hidden = PathNode(id = "h", subpaths = listOf(Shapes.rect(Rect(150.0, 20.0, 200.0, 60.0))), fill = solid(0x00AA00), visible = false, locked = true,
+            effects = listOf(io.github.mhmmtbg.nodist.model.Effect.RoundCorners(5.0)))
+        val group = io.github.mhmmtbg.nodist.model.GroupNode(id = "g", name = "Grup A", children = listOf(
+            PathNode(id = "c", subpaths = listOf(Shapes.rect(Rect(20.0, 150.0, 60.0, 190.0))), fill = solid(0x999999)),
+        ), effects = listOf(io.github.mhmmtbg.nodist.model.Effect.Shadow(3.0, 3.0, 0.0, 0.5)))
+        val back = roundTrip(single(box, hidden, group))
+        val kids = back.layers.single().children
+        assertEquals(3, kids.size)
+        val b = kids[0] as PathNode
+        assertEquals("Kutu", b.name)
+        assertEquals(4, b.subpaths.single().anchors.size)
+        assertEquals(3, b.effects.size)
+        assertEquals(effects[0], b.effects[0])
+        assertEquals(effects[1], b.effects[1])
+        val pat = b.effects[2] as io.github.mhmmtbg.nodist.model.Effect.Pattern
+        assertEquals(1, (pat.tile as PathNode).subpaths.size)
+        assertTrue(pat.tile.visible)
+        val h = kids[1] as PathNode
+        assertTrue(!h.visible && h.locked)
+        assertEquals(1, h.effects.size)
+        val g = kids[2] as io.github.mhmmtbg.nodist.model.GroupNode
+        assertEquals("Grup A", g.name)
+        assertEquals(1, g.children.size)
+        assertEquals(1, g.effects.size)
+        // Başka programlar ise yalnızca görünür içeriği görür: gizli kaynak gizli içerik grubundadır.
+        val foreignView = AiImporter.import(AiExporter.export(single(box.copy(effects = listOf(io.github.mhmmtbg.nodist.model.Effect.RoundCorners(12.0))))), "x")
+        assertEquals(1, foreignView.document.layers.single().children.size)
+    }
+
+    @Test
     fun rejectsNonPdfInput() {
         assertFailsWith<ImportException> { AiImporter.import("%!PS-Adobe-3.0\n%%Creator: Adobe Illustrator(R) 8.0".toByteArray(), "eski") }
         assertFailsWith<ImportException> { AiImporter.import("merhaba".toByteArray(), "x") }

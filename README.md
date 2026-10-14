@@ -65,11 +65,12 @@ yüklenir ve PNG olarak dışa aktarılır. Ekran görüntüleri aynı Release s
 - Hizalama ve dağıtma, kenarlara ve merkezlere yakalama (kılavuz çizgileriyle). Hizalama hedefi: seçim, çalışma yüzeyi ya da anahtar nesne; belirli boşlukla dağıtma.
 - Şekil işlemleri: birleştir, öndekini çıkar, kesiştir, dışla, böl. Kırpma maskesi yap/bırak. Bileşik yol yap/çöz, yolları birleştir.
 - Ek araçlar: makas (yolu keser), bıçak (dolgulu şekilleri çizgi boyunca böler), yuvarlak dikdörtgen, çokgen, yıldız.
-- Kontur ana hattı (konturu dolu şekle çevirir), yolu ötele, değişken genişlikli kontur, ok uçları, kontur hizası (içeri/dışarı), dış kontur.
+- Kontur ana hattı (konturu dolu şekle çevirir) ve kalıcı "Yolu ötele".
 - Dönüşüm araçları: döndür, ölçekle, yansıt, yatır; başvuru noktası ve kopya seçenekleri; "Tekrar dönüştür". Aynısını seç (dolgu, kontur, kalınlık, saydamlık, tür).
 - Çalışma yüzeyi yönetimi: ekle, çoğalt, sil, adlandır, sayısal konum/boyut, sanata sığdır, yüzey başına dışa aktar.
 - Cetveller, kılavuz çizgileri (cetvelden sürüklenir, yapışır, kilitlenir), ızgara ve ızgaraya yakalama; renk örnekleri (swatch) paneli (örnek rengini değiştirmek her kullanıldığı yeri değiştirir).
-- Görünüm ve efektler (düz vektör olarak üretilir): karışım modu, gölge, desenle doldur, fırça (şekli yola diz), metni yola diz, ağ gradyan, opaklık maskesi; ana hat görünümü.
+- Canlı efektler (Görünüm paneli; sonradan düzenlenir, kaldırılır, `.nodist` dosyasında düzenlenebilir kalır, diğer biçimlere görünümüyle yazılır): köşe yuvarlama, yolu ötele, değişken genişlik, ok uçları, kontur hizası, dış kontur, gölge, ağ gradyan, desen, fırça, yol üzerine yazı (metin düzenlenebilir kalır), opaklık maskesi; karışım modu; "Görünümü genişlet" ile kalıcı vektöre çevirme. Ana hat görünümü.
+- Araç çubuğu: bütün şekiller tek "Şekiller" düğmesinde, makas ve bıçak "Kesme araçları" düğmesinde. Seçili düz köşeli şekilde "Köşe −/+" köşeleri sonradan yuvarlar.
 - Yardım: Dosya menüsündeki "Yardım ve kılavuz" (Windows'ta F1) arama kutulu kullanım kılavuzunu ve kısayol tablosunu açar.
 - Dolgu ve kontur: düz renk, doğrusal/dairesel gradyan (duraklar ve açı), opaklık; kontur kalınlığı, uç, köşe, kesikli çizgi.
 - Renk seçici: RGB ve CMYK modlarının ikisinde de renk tekerleği ve parlaklık; seçilen rengin kodu (#RRGGBB), RGB ve
