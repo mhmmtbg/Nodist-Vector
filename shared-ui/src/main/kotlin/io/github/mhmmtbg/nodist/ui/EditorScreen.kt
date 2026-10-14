@@ -136,6 +136,7 @@ fun EditorScreen(vm: EditorViewModel, host: PlatformHost) {
     var showTransformTools by remember { mutableStateOf(false) }
     var spacingAxis by remember { mutableStateOf<Boolean?>(null) }
     var showSelectSame by remember { mutableStateOf(false) }
+    var showAppearance by remember { mutableStateOf(false) }
     var showArtboards by remember { mutableStateOf(false) }
     var showSwatches by remember { mutableStateOf(false) }
     var gridDialog by remember { mutableStateOf(false) }
@@ -187,12 +188,12 @@ fun EditorScreen(vm: EditorViewModel, host: PlatformHost) {
                             Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                                 .onSizeChanged { vm.obscuredBottomPx = if (state.layersOpen) it.height.toFloat() else 0f },
                         ) {
-                            ContextBar(vm, Modifier, onRename = { renaming = it }, onTransform = { showTransform = true }, onExport = { exportingSelection = true }, onTransformTools = { showTransformTools = true }, onSpacing = { spacingAxis = it }, onSelectSame = { showSelectSame = true })
+                            ContextBar(vm, Modifier, onRename = { renaming = it }, onTransform = { showTransform = true }, onExport = { exportingSelection = true }, onTransformTools = { showTransformTools = true }, onSpacing = { spacingAxis = it }, onSelectSame = { showSelectSame = true }, onAppearance = { showAppearance = true })
                             if (state.layersOpen) LayersPanel(vm, host, Modifier.fillMaxWidth().fillMaxHeight(0.46f))
                         }
                     } else {
                         SideEffect { vm.obscuredBottomPx = 0f }
-                        ContextBar(vm, Modifier.align(Alignment.BottomCenter), onRename = { renaming = it }, onTransform = { showTransform = true }, onExport = { exportingSelection = true }, onTransformTools = { showTransformTools = true }, onSpacing = { spacingAxis = it }, onSelectSame = { showSelectSame = true })
+                        ContextBar(vm, Modifier.align(Alignment.BottomCenter), onRename = { renaming = it }, onTransform = { showTransform = true }, onExport = { exportingSelection = true }, onTransformTools = { showTransformTools = true }, onSpacing = { spacingAxis = it }, onSelectSame = { showSelectSame = true }, onAppearance = { showAppearance = true })
                         if (state.layersOpen && !wide) {
                             LayersPanel(vm, host, Modifier.align(Alignment.TopEnd).fillMaxHeight().widthIn(max = 340.dp).fillMaxWidth(0.88f))
                         }
@@ -273,6 +274,7 @@ fun EditorScreen(vm: EditorViewModel, host: PlatformHost) {
             vm.selectSimilar(kind)
         }
     }
+    if (showAppearance) AppearanceDialog(vm, onDismiss = { showAppearance = false })
     if (showSwatches) SwatchesDialog(vm, onDismiss = { showSwatches = false })
     if (state.showHelp) HelpDialog(onDismiss = { vm.closeHelp() })
     if (gridDialog) {
@@ -414,6 +416,7 @@ private fun TopBar(
                     item(tr("Kılavuzları temizle")) { vm.clearGuidesCmd() }
                 }
                 item(tr("Renk örnekleri…"), onSwatches)
+                item(if (state.outlineView) tr("Ana hat görünümü: açık") else tr("Ana hat görünümü: kapalı")) { vm.toggleOutlineView() }
                 HorizontalDivider()
                 item(tr("Yardım ve kılavuz"), onHelp)
                 // Dil değiştirme: seçim kaydedilir ve ekran yeni dille yeniden kurulur.
@@ -527,6 +530,7 @@ private fun ContextBar(
     onTransformTools: () -> Unit,
     onSpacing: (Boolean) -> Unit,
     onSelectSame: () -> Unit,
+    onAppearance: () -> Unit,
 ) {
     val state = vm.state
     val actions = ArrayList<Pair<String, () -> Unit>>()
@@ -640,6 +644,7 @@ private fun ContextBar(
             if (vm.lastTransform != null) actions += tr("Tekrar dönüştür") to vm::repeatTransform
             actions += tr("Aynısını seç…") to onSelectSame
             if (single != null) actions += tr("Kenarlara kılavuz") to vm::guidesFromSelection
+            actions += tr("Görünüm…") to onAppearance
         }
     }
     if (state.pen == null && mode == 0) {
@@ -762,7 +767,7 @@ private val ActionIcons: Map<String, ImageVector> by lazy {
         "Kontur ana hattı" to AppIcons.Outline, "Yolu ötele…" to AppIcons.Offset, "Böl" to AppIcons.Divide,
         "Bileşik yap" to AppIcons.Compound, "Bileşiği çöz" to AppIcons.Release, "Yolları birleştir" to AppIcons.Join,
         "Yol" to AppIcons.Nodes, "Dönüşüm araçları…" to AppIcons.Transform, "Tekrar dönüştür" to AppIcons.Transform,
-        "Aynısını seç…" to AppIcons.Select, "Kenarlara kılavuz" to AppIcons.Shapes,
+        "Aynısını seç…" to AppIcons.Select, "Görünüm…" to AppIcons.Shapes, "Kenarlara kılavuz" to AppIcons.Shapes,
         "Hizala" to AppIcons.AlignLeft, "Şekil" to AppIcons.Shapes, "Dönüştür" to AppIcons.Transform,
         "Vektöre çevir" to AppIcons.Picture, "Metni düzenle" to AppIcons.Pencil, "Eğ" to AppIcons.Arc, "Yola çevir" to AppIcons.Nodes,
         "Kopyala" to AppIcons.Copy, "Kes" to AppIcons.Cut, "Yapıştır" to AppIcons.Paste, "Çoğalt" to AppIcons.Duplicate,

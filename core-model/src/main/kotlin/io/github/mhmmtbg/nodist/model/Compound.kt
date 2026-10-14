@@ -46,7 +46,7 @@ internal fun Document.topLevelPaths(ids: Set<String>): List<PathNode> =
     layers.flatMap { it.children }.filter { it.id in ids }.filterIsInstance<PathNode>()
 
 /** Yolu kendi dönüşümüyle belge uzayına taşır; kontur kalınlığı ve gradyanlar da eşlenir. */
-internal fun PathNode.baked(): PathNode {
+fun PathNode.baked(): PathNode {
     val m = transform
     if (m.isIdentity) return this
     return copy(

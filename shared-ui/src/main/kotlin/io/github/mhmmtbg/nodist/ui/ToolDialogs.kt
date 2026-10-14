@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -38,6 +39,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.github.mhmmtbg.nodist.editor.EditorViewModel
+import io.github.mhmmtbg.nodist.model.StrokeAlign
+import io.github.mhmmtbg.nodist.model.BlendMode
 import io.github.mhmmtbg.nodist.model.Artboard
 import io.github.mhmmtbg.nodist.model.Rect
 import io.github.mhmmtbg.nodist.model.RefPoint
@@ -361,5 +364,128 @@ fun SwatchesDialog(vm: EditorViewModel, onDismiss: () -> Unit) {
     editing?.let { i ->
         val sw = swatches.getOrNull(i)
         if (sw == null) editing = null else ColorPickerDialog(sw.color, onDismiss = { editing = null }) { editing = null; vm.editSwatchColor(i, it) }
+    }
+}
+
+/** Birkaç sayı isteyen pencere; [labels] ve [initial] aynı uzunluktadır. */
+@Composable
+fun ParamDialog(title: String, labels: List<String>, initial: List<Double>, onDismiss: () -> Unit, onConfirm: (List<Double>) -> Unit) {
+    val values = remember { mutableStateListOf(*initial.map { fmtNum(it) }.toTypedArray()) }
+    val parsed = values.map { parseNum(it) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                for ((i, l) in labels.withIndex()) {
+                    OutlinedTextField(values[i], { values[i] = it }, singleLine = true, label = { Text(l) }, keyboardOptions = DecimalKeys)
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { onConfirm(parsed.map { it!! }) }, enabled = parsed.all { it != null }) { Text(tr("Tamam")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Vazgeç")) } },
+    )
+}
+
+/** Seçenek listesi; birine dokunmak [onPick] ile sırasını bildirir. */
+@Composable
+fun PickDialog(title: String, items: List<String>, onDismiss: () -> Unit, onPick: (Int) -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                for ((i, label) in items.withIndex()) {
+                    Text(
+                        label,
+                        Modifier.fillMaxWidth().clickable(role = Role.Button) { onPick(i) }.padding(vertical = 12.dp),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Vazgeç")) } },
+    )
+}
+
+private val BlendLabels = listOf(
+    BlendMode.Normal to "Normal", BlendMode.Multiply to "Çarpma", BlendMode.Screen to "Ekran", BlendMode.Overlay to "Bindirme",
+    BlendMode.Darken to "Koyulaştır", BlendMode.Lighten to "Açıklaştır", BlendMode.ColorDodge to "Renk soldur", BlendMode.ColorBurn to "Renk yak",
+    BlendMode.HardLight to "Sert ışık", BlendMode.SoftLight to "Yumuşak ışık", BlendMode.Difference to "Fark", BlendMode.Exclusion to "Dışlama",
+    BlendMode.Hue to "Ton", BlendMode.Saturation to "Doygunluk", BlendMode.Color to "Renk tonu", BlendMode.Luminosity to "Aydınlık",
+)
+
+/**
+ * Görünüm ve efektler: karışım modu, gölge, dış kontur, değişken genişlikli kontur, ok uçları, kontur hizası, desen,
+ * fırça ve yol üzerine yazı. Sonuçlar düz vektör olarak üretilir.
+ */
+@Composable
+fun AppearanceDialog(vm: EditorViewModel, onDismiss: () -> Unit) {
+    var sub by remember { mutableStateOf<String?>(null) }
+    fun done() { sub = null; onDismiss() }
+    when (sub) {
+        "blend" -> PickDialog(tr("Karışım modu"), BlendLabels.map { tr(it.second) }, onDismiss = { sub = null }) { i ->
+            vm.setBlendMode(BlendLabels[i].first)
+            done()
+        }
+        "shadow" -> ParamDialog(tr("Gölge ekle"), listOf(tr("Yatay kayma"), tr("Dikey kayma"), tr("Bulanıklık"), tr("Saydamlık (%)")), listOf(6.0, 6.0, 8.0, 50.0), { sub = null }) { v ->
+            vm.addShadowCmd(v[0], v[1], v[2], v[3].coerceIn(0.0, 100.0))
+            done()
+        }
+        "outer" -> ParamDialog(tr("Dış kontur ekle"), listOf(tr("Kalınlık")), listOf(4.0), { sub = null }) { v ->
+            vm.addOuterStrokeCmd(v[0])
+            done()
+        }
+        "taper" -> ParamDialog(tr("Değişken genişlikli kontur"), listOf(tr("Baştaki kalınlık"), tr("Sondaki kalınlık")), listOf(12.0, 0.0), { sub = null }) { v ->
+            vm.taperStrokeCmd(v[0], v[1])
+            done()
+        }
+        "arrow" -> PickDialog(tr("Ok uçları"), listOf(tr("Sona"), tr("Başa"), tr("İki uca")), onDismiss = { sub = null }) { i ->
+            vm.arrowheadsCmd(atStart = i != 0, atEnd = i != 1)
+            done()
+        }
+        "align" -> PickDialog(tr("Kontur hizası"), listOf(tr("İçeri"), tr("Dışarı")), onDismiss = { sub = null }) { i ->
+            vm.alignStrokeCmd(if (i == 0) StrokeAlign.Inside else StrokeAlign.Outside)
+            done()
+        }
+        "pattern" -> ParamDialog(tr("Desenle doldur"), listOf(tr("Yatay boşluk"), tr("Dikey boşluk")), listOf(0.0, 0.0), { sub = null }) { v ->
+            vm.tilePatternCmd(v[0], v[1])
+            done()
+        }
+        "brush" -> ParamDialog(tr("Fırça: şekli yola diz"), listOf(tr("Kalınlık çarpanı")), listOf(1.0), { sub = null }) { v ->
+            vm.artBrushCmd(v[0])
+            done()
+        }
+        else -> AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(tr("Görünüm ve efektler")) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    val items = listOf(
+                        "blend" to tr("Karışım modu…"),
+                        "shadow" to tr("Gölge ekle…"),
+                        "outer" to tr("Dış kontur ekle…"),
+                        "taper" to tr("Değişken genişlikli kontur…"),
+                        "arrow" to tr("Ok uçları…"),
+                        "align" to tr("Kontur hizası…"),
+                        "pattern" to tr("Desenle doldur…"),
+                        "brush" to tr("Fırça: şekli yola diz…"),
+                        "textpath" to tr("Metni yola diz"),
+                    )
+                    for ((id, label) in items) {
+                        Text(
+                            label,
+                            Modifier.fillMaxWidth().clickable(role = Role.Button) {
+                                if (id == "textpath") { vm.textOnPathCmd(); onDismiss() } else sub = id
+                            }.padding(vertical = 12.dp),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Vazgeç")) } },
+        )
     }
 }

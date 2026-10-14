@@ -175,6 +175,8 @@ data class EditorState(
     val pen: PenState? = null,
     /** Seçim çerçevesi (belge koordinatı). */
     val marquee: Rect? = null,
+    /** Ana hat görünümü: dolgular gizlenir, yalnızca ince çizgiler görünür (belge değişmez). */
+    val outlineView: Boolean = false,
     /** Yardım sayfası açık mı. */
     val showHelp: Boolean = false,
     /** Bıçak aracının sürüklenen çizgisi (belge koordinatı). */

@@ -56,6 +56,7 @@ import io.github.mhmmtbg.nodist.model.Document
 import io.github.mhmmtbg.nodist.model.Rect
 import io.github.mhmmtbg.nodist.model.artboardBounds
 import io.github.mhmmtbg.nodist.model.nodeCount
+import io.github.mhmmtbg.nodist.model.outlineView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -90,8 +91,9 @@ fun CanvasView(vm: EditorViewModel, modifier: Modifier = Modifier) {
     // Çizim iki katmandır: altta belge, üstte seçim kutusu, tutamaçlar ve kılavuzlar. Belge katmanı yalnızca
     // belge ya da görünüm değişince yeniden çizilir; seçim, araç ya da panel değişiklikleri (kalabalık belgede
     // pahalı olan) belge çizimini tetiklemez.
-    val documentState = remember(vm) { derivedStateOf(referentialEqualityPolicy()) { vm.state.document } }
-    val presentState = remember(vm) { derivedStateOf(referentialEqualityPolicy()) { vm.state.history.present } }
+    val outlineMemo = remember { OutlineMemo() }
+    val documentState = remember(vm) { derivedStateOf(referentialEqualityPolicy()) { vm.state.document.let { d -> if (vm.state.outlineView) outlineMemo.of(d) else d } } }
+    val presentState = remember(vm) { derivedStateOf(referentialEqualityPolicy()) { vm.state.history.present.let { d -> if (vm.state.outlineView) outlineMemo.of(d) else d } } }
     val previewing = remember(vm) { derivedStateOf { vm.state.preview != null } }
     // Seçili nesnelerin üst düzey kimlikleri: kalabalık belgede bunlar ayrı çizilir.
     val eachBounds = remember { EachBounds() }
@@ -499,6 +501,23 @@ private fun DrawScope.selectionBox(rect: Rect, viewport: Viewport, rotateOffset:
 }
 
 /** Belgenin çalışma yüzeylerini kapsayan, önceden çizilmiş görüntüsü. */
+/** Ana hat görünümü belgesini, kaynak belge değişmedikçe yeniden üretmeden saklar. */
+private class OutlineMemo {
+    private var src: Document? = null
+    private var out: Document? = null
+    private var src2: Document? = null
+    private var out2: Document? = null
+
+    fun of(d: Document): Document {
+        if (src === d) return out!!
+        if (src2 === d) return out2!!
+        val o = d.outlineView()
+        src2 = src; out2 = out
+        src = d; out = o
+        return o
+    }
+}
+
 private class RasterCache(val document: Document, private val image: ImageBitmap, private val bounds: Rect, private val scale: Float) {
     private val paint = Paint().apply { filterQuality = FilterQuality.Low }
 

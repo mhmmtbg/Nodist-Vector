@@ -30,6 +30,19 @@ import io.github.mhmmtbg.nodist.model.ImageNode
 import io.github.mhmmtbg.nodist.model.Layer
 import io.github.mhmmtbg.nodist.model.LineCap
 import io.github.mhmmtbg.nodist.model.LineJoin
+import io.github.mhmmtbg.nodist.model.BlendMode
+import io.github.mhmmtbg.nodist.model.Ruler
+import io.github.mhmmtbg.nodist.model.StrokeAlign
+import io.github.mhmmtbg.nodist.model.alongPath
+import io.github.mhmmtbg.nodist.model.addArrowheads
+import io.github.mhmmtbg.nodist.model.addOuterStroke
+import io.github.mhmmtbg.nodist.model.alignStroke
+import io.github.mhmmtbg.nodist.model.artBrush
+import io.github.mhmmtbg.nodist.model.dropShadow
+import io.github.mhmmtbg.nodist.model.taperStroke
+import io.github.mhmmtbg.nodist.model.tilePattern
+import io.github.mhmmtbg.nodist.model.withBlendMode
+import io.github.mhmmtbg.nodist.model.baked
 import io.github.mhmmtbg.nodist.model.Matrix
 import io.github.mhmmtbg.nodist.model.Node
 import io.github.mhmmtbg.nodist.model.Paint
@@ -1336,6 +1349,105 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
             return
         }
         commit(cut.first) { it.withSelection(cut.second.toSet()) }
+    }
+
+    fun toggleOutlineView() { state = state.copy(outlineView = !state.outlineView) }
+
+    /** Seçili nesnelerin karışım modunu ayarlar. */
+    fun setBlendMode(mode: BlendMode) {
+        if (state.selection.isEmpty()) return
+        commit(state.selection.fold(present) { d, id -> d.updateNode(id) { it.withBlendMode(mode) } })
+    }
+
+    private fun applyEffect(failMessage: String, f: (Document) -> Pair<Document, Set<String>>?) {
+        val r = tryOps { f(present) }
+        if (r == null) {
+            state = state.copy(message = tr(failMessage))
+            return
+        }
+        commit(r.first) { it.withSelection(r.second) }
+    }
+
+    /** Seçilenlerin arkasına yumuşak gölge koyar; [opacityPercent] 0–100. */
+    fun addShadowCmd(dx: Double, dy: Double, blur: Double, opacityPercent: Double) = applyEffect("Gölge eklenemedi (yol, metin ya da grup seçin)") { d ->
+        d.dropShadow(state.selection, dx, dy, blur.coerceAtLeast(0.0), Rgba.Black, opacityPercent / 100.0)?.let { it.first to it.second.toSet() }
+    }
+
+    fun addOuterStrokeCmd(width: Double) = applyEffect("Dış kontur eklenemedi (yol seçin, kalınlık sıfırdan büyük olsun)") { d ->
+        d.addOuterStroke(state.selection, width, state.stroke ?: state.fill ?: Rgba.Black)?.let { it.first to it.second.toSet() }
+    }
+
+    fun taperStrokeCmd(startWidth: Double, endWidth: Double) = applyEffect("Açık bir yol seçin") { d ->
+        val id = state.selection.singleOrNull() ?: return@applyEffect null
+        d.taperStroke(id, startWidth.coerceAtLeast(0.0), endWidth.coerceAtLeast(0.0))?.let { it.first to setOf(it.second) }
+    }
+
+    fun arrowheadsCmd(atStart: Boolean, atEnd: Boolean) = applyEffect("Ok ucu için konturlu, açık bir yol seçin") { d ->
+        var doc = d
+        val made = LinkedHashSet<String>()
+        for (id in state.selection) {
+            val r = doc.addArrowheads(id, atStart, atEnd, 4.0) ?: continue
+            doc = r.first
+            made += r.second
+        }
+        if (made.isEmpty()) null else doc to made
+    }
+
+    fun alignStrokeCmd(align: StrokeAlign) = applyEffect("Kontur hizası için konturlu, kapalı bir yol seçin") { d ->
+        var doc = d
+        val made = LinkedHashSet<String>()
+        for (id in state.selection) {
+            val r = doc.alignStroke(id, align, regionOps()) ?: continue
+            doc = r.first
+            made += r.second
+        }
+        if (made.isEmpty()) null else doc to made
+    }
+
+    /** En üstteki seçili kapalı yolu, diğer seçili nesnelerden oluşan karoyla döşer. */
+    fun tilePatternCmd(gapX: Double, gapY: Double) = applyEffect("Desen için en az iki nesne seçin: en üstteki kapalı yol doldurulur, diğerleri karo olur (en çok 2500 karo)") { d ->
+        val ordered = d.layers.flatMap { it.children }.filter { it.id in state.selection }
+        val target = ordered.lastOrNull() as? PathNode ?: return@applyEffect null
+        d.tilePattern(target.id, ordered.dropLast(1).map { it.id }.toSet(), gapX, gapY)?.let { it.first to setOf(it.second) }
+    }
+
+    /** Seçili kapalı şekli, seçili açık yolun boyunca esnetir (sanat fırçası). */
+    fun artBrushCmd(thickness: Double) = applyEffect("Fırça için bir kapalı şekil ve bir açık yol seçin") { d ->
+        val paths = state.selection.mapNotNull { d.findNode(it) as? PathNode }
+        if (paths.size != 2 || state.selection.size != 2) return@applyEffect null
+        val guide = paths.firstOrNull { p -> p.subpaths.any { !it.closed } } ?: return@applyEffect null
+        val shape = paths.first { it.id != guide.id }
+        d.artBrush(shape.id, guide.id, thickness.coerceAtLeast(0.05))?.let { it.first to setOf(it.second) }
+    }
+
+    /** Seçili metni, seçili açık yolun boyunca dizer; metin yola çevrilir, yol yerinde kalır. */
+    fun textOnPathCmd() {
+        val nodes = state.selection.mapNotNull { present.findNode(it) }
+        val text = nodes.filterIsInstance<TextNode>().singleOrNull()
+        val guideNode = (nodes.filterIsInstance<PathNode>().singleOrNull())?.baked()
+        val guide = guideNode?.subpaths?.firstOrNull { it.anchors.size >= 2 }
+        if (nodes.size != 2 || text == null || guide == null) {
+            state = state.copy(message = tr("Bir metin ve bir yol seçin"))
+            return
+        }
+        val shapes = try { TextOutliner.outline(text) } catch (e: Throwable) { emptyList() }
+        val box = shapes.mapNotNull { it.bounds() }.reduceOrNull(Rect::union)
+        if (box == null) {
+            state = state.copy(message = tr("Bu metin yola çevrilemedi"))
+            return
+        }
+        val k = text.transform.meanScale
+        val scaled = shapes.map { it.transformed(Matrix.scale(k, k)) }
+        val bent = alongPath(scaled, Ruler(guide), originX = box.left * k)
+        if (bent.isEmpty()) {
+            state = state.copy(message = tr("Bir metin ve bir yol seçin"))
+            return
+        }
+        val out = PathNode(
+            id = text.id, name = text.name, opacity = text.opacity, blendMode = text.blendMode,
+            subpaths = bent, fill = text.fill, stroke = text.stroke?.let { it.copy(width = it.width * k) },
+        )
+        commit(present.updateNode(text.id) { out }) { it.withSelection(setOf(text.id)) }
     }
 
     fun openHelp() { state = state.copy(showHelp = true) }
