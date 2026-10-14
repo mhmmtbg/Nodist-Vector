@@ -1338,6 +1338,9 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
         commit(cut.first) { it.withSelection(cut.second.toSet()) }
     }
 
+    fun openHelp() { state = state.copy(showHelp = true) }
+    fun closeHelp() { state = state.copy(showHelp = false) }
+
     private fun regionOps(): RegionOps = SkiaRegionOps
 
     private fun <T> tryOps(f: () -> T?): T? = try { f() } catch (e: Throwable) { null }

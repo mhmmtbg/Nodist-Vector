@@ -167,6 +167,7 @@ fun EditorScreen(vm: EditorViewModel, host: PlatformHost) {
                 onCoffee = { showCoffee = true },
                 onArtboards = { showArtboards = true },
                 onSwatches = { showSwatches = true },
+                onHelp = { vm.openHelp() },
                 onGridSize = { gridDialog = true },
             )
             TabStrip(vm)
@@ -273,6 +274,7 @@ fun EditorScreen(vm: EditorViewModel, host: PlatformHost) {
         }
     }
     if (showSwatches) SwatchesDialog(vm, onDismiss = { showSwatches = false })
+    if (state.showHelp) HelpDialog(onDismiss = { vm.closeHelp() })
     if (gridDialog) {
         NumberDialog(tr("Izgara aralığı"), tr("Aralık"), state.gridSize, onDismiss = { gridDialog = false }) { v ->
             gridDialog = false
@@ -364,6 +366,7 @@ private fun TopBar(
     onCoffee: () -> Unit,
     onArtboards: () -> Unit,
     onSwatches: () -> Unit,
+    onHelp: () -> Unit,
     onGridSize: () -> Unit,
 ) {
     val state = vm.state
@@ -412,6 +415,7 @@ private fun TopBar(
                 }
                 item(tr("Renk örnekleri…"), onSwatches)
                 HorizontalDivider()
+                item(tr("Yardım ve kılavuz"), onHelp)
                 // Dil değiştirme: seçim kaydedilir ve ekran yeni dille yeniden kurulur.
                 item(tr("Dil: Türkçe")) { onToggleLanguage() }
                 if (coffee != null) {

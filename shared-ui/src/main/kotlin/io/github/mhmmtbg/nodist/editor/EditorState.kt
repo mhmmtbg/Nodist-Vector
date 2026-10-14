@@ -175,6 +175,8 @@ data class EditorState(
     val pen: PenState? = null,
     /** Seçim çerçevesi (belge koordinatı). */
     val marquee: Rect? = null,
+    /** Yardım sayfası açık mı. */
+    val showHelp: Boolean = false,
     /** Bıçak aracının sürüklenen çizgisi (belge koordinatı). */
     val knifeLine: Pair<Vec2, Vec2>? = null,
     val layersOpen: Boolean = false,

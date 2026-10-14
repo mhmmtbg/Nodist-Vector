@@ -7,6 +7,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
@@ -113,11 +114,15 @@ private fun handleShortcut(event: KeyEvent, vm: EditorViewModel, host: DesktopHo
             Key.I -> if (event.isShiftPressed) host.pickDocument(vm::importInto) else return false
             Key.G -> if (event.isShiftPressed) vm.ungroupSelection() else vm.groupSelection()
             Key.Zero -> vm.fitToScreen()
+            Key.Eight -> if (event.isAltPressed) vm.releaseCompoundPath() else vm.makeCompoundPath()
+            Key.J -> vm.joinSelection()
+            Key.R -> vm.toggleRulers()
             else -> return false
         }
         return true
     }
     when (event.key) {
+        Key.F1 -> vm.openHelp()
         Key.Delete, Key.Backspace -> vm.deleteSelection()
         Key.Escape -> host.onBack?.invoke() ?: run { if (vm.state.pen != null) vm.cancelPen() }
         Key.Enter -> if (vm.state.pen != null) vm.finishPen() else return false

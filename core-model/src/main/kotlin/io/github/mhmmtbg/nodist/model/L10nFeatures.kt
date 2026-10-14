@@ -120,4 +120,10 @@ internal val FeatureStrings: Map<String, String> = mapOf(
     "Kontur ana hattı" to "Outline stroke",
     "Yolu ötele…" to "Offset path…",
     "Böl" to "Divide",
+    "Yardım ve kılavuz" to "Help and guide",
+    "Yardım" to "Help",
+    "Ara…" to "Search…",
+    "Kılavuz" to "Guide",
+    "Kısayollar" to "Shortcuts",
+    "Sonuç bulunamadı" to "No results",
 )
