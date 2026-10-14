@@ -64,7 +64,7 @@ jobs:
         if: failure()
         run: |
           [ -f build.log ] || exit 0
-          grep -E '^e: |^\* What went wrong|^> [^T]|^   > |^\s+(at|Caused by) .*mobileillustrator|AssertionError|Unresolved reference|error:|FAILED$' build.log \
+          grep -E '^e: |^\* What went wrong|^> [^T]|^   > |^\s+(at|Caused by) .*nodist|AssertionError|Unresolved reference|error:|FAILED$' build.log \
             | grep -v '^> Task .* \(UP-TO-DATE\|FROM-CACHE\|SKIPPED\|NO-SOURCE\)$' \
             | sed -e "s#file://${GITHUB_WORKSPACE}/##" | awk '!seen[$0]++' | head -n 60 > errors.txt || true
           [ -s errors.txt ] || tail -n 40 build.log > errors.txt
@@ -80,9 +80,9 @@ jobs:
         run: |
           mkdir -p dist/test
           # Yayımlanan dosya küçültülmüş sürüm derlemesidir; hata ayıklama derlemesi yalnızca testlerde kullanılır.
-          cp app/build/outputs/apk/release/app-release.apk "dist/nodea-${VERSION_CODE}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "dist/nodist-${VERSION_CODE}.apk"
           # Google Play'e yüklenen paket (AAB). Mağaza yalnızca kendi anahtarınla imzalanmış paketi kabul eder.
-          cp app/build/outputs/bundle/release/app-release.aab "dist/nodea-${VERSION_CODE}.aab"
+          cp app/build/outputs/bundle/release/app-release.aab "dist/nodist-${VERSION_CODE}.aab"
           cp app/build/outputs/apk/debug/app-debug.apk dist/test/app-debug.apk
           cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk dist/test/app-debug-androidTest.apk
           ls -la dist dist/test
@@ -91,7 +91,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: nodea-apk
+          name: nodist-apk
           path: dist
 
       - name: Release yayınla
@@ -162,14 +162,14 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          cp desktop/build/compose/binaries/main/exe/*.exe "dist/nodea-setup-${VERSION_CODE}.exe"
-          (cd desktop/build/compose/binaries/main/app && 7z a -tzip -mx=7 "$GITHUB_WORKSPACE/dist/nodea-windows-${VERSION_CODE}.zip" "Nodist" > /dev/null)
+          cp desktop/build/compose/binaries/main/exe/*.exe "dist/nodist-setup-${VERSION_CODE}.exe"
+          (cd desktop/build/compose/binaries/main/app && 7z a -tzip -mx=7 "$GITHUB_WORKSPACE/dist/nodist-windows-${VERSION_CODE}.zip" "Nodist" > /dev/null)
           cp windows-self-test.png dist/windows-self-test.png
           ls -la dist
 
       - uses: actions/upload-artifact@v4
         with:
-          name: nodea-windows
+          name: nodist-windows
           path: dist
 
       - name: Release'e ekle
@@ -199,7 +199,7 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: nodea-apk
+          name: nodist-apk
           path: dist
 
       - name: KVM'i etkinleştir
@@ -261,7 +261,7 @@ jobs:
       - uses: actions/download-artifact@v4
         if: steps.gate.outputs.go == 'true'
         with:
-          name: nodea-apk
+          name: nodist-apk
           path: dist
 
       - name: Google Play'e yükle
@@ -269,12 +269,12 @@ jobs:
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: io.github.mhmmtbg.nodea
-          releaseFiles: dist/nodea-${{ github.run_number }}.aab
+          packageName: io.github.mhmmtbg.nodist
+          releaseFiles: dist/nodist-${{ github.run_number }}.aab
           releaseName: "1.0.${{ github.run_number }}"
           track: ${{ vars.PLAY_TRACK || 'internal' }}
           status: ${{ vars.PLAY_RELEASE_STATUS || 'draft' }}
 
       - name: Sonuç
         if: steps.gate.outputs.go == 'true'
-        run: echo "::notice title=Google Play::nodea-${VERSION_CODE}.aab '${{ vars.PLAY_TRACK || 'internal' }}' kanalına yüklendi (durum ${{ vars.PLAY_RELEASE_STATUS || 'draft' }})."
+        run: echo "::notice title=Google Play::nodist-${VERSION_CODE}.aab '${{ vars.PLAY_TRACK || 'internal' }}' kanalına yüklendi (durum ${{ vars.PLAY_RELEASE_STATUS || 'draft' }})."

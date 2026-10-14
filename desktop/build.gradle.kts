@@ -35,7 +35,7 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "io.github.mhmmtbg.mobileillustrator.desktop.MainKt"
+        mainClass = "io.github.mhmmtbg.nodist.desktop.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Exe, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Nodist"
@@ -65,7 +65,7 @@ compose.desktop {
 tasks.register<JavaExec>("storeScreenshots") {
     group = "store"
     classpath = sourceSets["test"].runtimeClasspath
-    mainClass.set("io.github.mhmmtbg.mobileillustrator.desktop.StoreScreenshots")
+    mainClass.set("io.github.mhmmtbg.nodist.desktop.StoreScreenshots")
     args(rootProject.file("store/raw").path)
     jvmArgs("-Djava.awt.headless=true")
 }

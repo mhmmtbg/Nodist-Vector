@@ -9,7 +9,7 @@
         android:label="@string/app_name"
         android:largeHeap="true"
         android:supportsRtl="true"
-        android:theme="@style/Theme.MobileIllustrator">
+        android:theme="@style/Theme.Nodist">
         <!-- AdMob uygulama kimliği: derleme sırasında verilir (bkz. app/build.gradle.kts); verilmezse Google'ın deneme kimliği kullanılır. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
@@ -48,6 +48,8 @@
                 <data android:scheme="file" />
                 <data android:host="*" />
                 <data android:mimeType="application/octet-stream" />
+                <data android:pathPattern=".*\\.nodist" />
+                <data android:pathPattern=".*\\..*\\.nodist" />
                 <data android:pathPattern=".*\\.nodea" />
                 <data android:pathPattern=".*\\..*\\.nodea" />
                 <data android:pathPattern=".*\\.ai" />

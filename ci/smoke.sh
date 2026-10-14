@@ -8,9 +8,9 @@ APK=$1
 OUT=$2
 # "quick": yalnızca açılış, dosya açma ve katmanlar (küçültülmüş sürüm derlemesinin bozulmadığını görmek için).
 MODE=${3:-full}
-PKG=io.github.mhmmtbg.nodea
+PKG=io.github.mhmmtbg.nodist
 # Etkinlik sınıfı kod paketindedir; paket kimliğinden (mağaza adı) ayrıdır.
-ACTIVITY=io.github.mhmmtbg.mobileillustrator.MainActivity
+ACTIVITY=io.github.mhmmtbg.nodist.MainActivity
 mkdir -p "$OUT"
 
 fail() {
@@ -90,7 +90,7 @@ adb install -r "$APK"
 adb logcat -c
 # Test etiketleri Türkçe. Hata ayıklama derlemesinde arayüz dili Türkçeye sabitlenir; sürüm derlemesinde
 # buna izin yoktur, orada cihaz dili (İngilizce) geçerlidir ve etiketler çeviri tablosundan çevrilir.
-L10N="$(dirname "$0")/../core-model/src/main/kotlin/io/github/mhmmtbg/mobileillustrator/model/L10n.kt"
+L10N="$(dirname "$0")/../core-model/src/main/kotlin/io/github/mhmmtbg/nodist/model/L10n.kt"
 if adb shell "run-as $PKG sh -c 'mkdir -p files && echo tr > files/language'" > /dev/null 2>&1 \
   && [ "$(adb shell "run-as $PKG cat files/language" 2> /dev/null | tr -d '\r')" = tr ]; then EN=0; else EN=1; fi
 echo "Arayüz dili: $([ "$EN" = 1 ] && echo İngilizce || echo Türkçe)"
@@ -228,19 +228,19 @@ try_export() {
   if [ -n "$f" ]; then adb pull "$f" "$OUT/disa-aktarim.$2" > /dev/null || true; else echo "::warning title=Duman testi::Kaydedilen dosya bulunamadı ($2)"; fi
   alive "dışa aktarma $2"
 }
-try_export "Farklı kaydet (.nodea)" nodea
+try_export "Farklı kaydet (.nodist)" nodist
 # Farklı kaydet'ten sonra "Kaydet" sormadan aynı dosyanın üzerine yazmalı.
-if [ -f "$OUT/disa-aktarim.nodea" ]; then
-  before=$(stat -c %s "$OUT/disa-aktarim.nodea")
+if [ -f "$OUT/disa-aktarim.nodist" ]; then
+  before=$(stat -c %s "$OUT/disa-aktarim.nodist")
   tap "Elips"
   adb shell input swipe $((W * 40 / 100)) $((H * 14 / 100)) $((W * 55 / 100)) $((H * 19 / 100)) 400
   tap "Dosya menüsü"
   tap "Kaydet"
   sleep 4
   wait_for "Dosya menüsü"
-  f=$(adb shell "find /sdcard/Download /sdcard/Documents -name 'Gopher*.nodea' 2>/dev/null" | tr -d '\r' | head -n 1)
-  adb pull "$f" "$OUT/disa-aktarim.nodea" > /dev/null
-  after=$(stat -c %s "$OUT/disa-aktarim.nodea")
+  f=$(adb shell "find /sdcard/Download /sdcard/Documents -name 'Gopher*.nodist' 2>/dev/null" | tr -d '\r' | head -n 1)
+  adb pull "$f" "$OUT/disa-aktarim.nodist" > /dev/null
+  after=$(stat -c %s "$OUT/disa-aktarim.nodist")
   [ "$before" != "$after" ] || fail "Kaydet bağlı dosyayı güncellemedi (boyut aynı: $before)"
   tap "Seçim"
 fi

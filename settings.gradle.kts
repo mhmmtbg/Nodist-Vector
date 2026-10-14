@@ -13,6 +13,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "nodea"
+rootProject.name = "nodist"
 
 include(":app", ":core-model", ":core-render", ":io-svg", ":io-ai", ":desktop")

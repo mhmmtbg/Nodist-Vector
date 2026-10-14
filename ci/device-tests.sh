@@ -11,9 +11,9 @@ DIST=$1
 OUT=$2
 VERSION=$3
 KIND=${4:-phone}
-PKG=io.github.mhmmtbg.nodea
+PKG=io.github.mhmmtbg.nodist
 # Etkinlik sınıfı kod paketindedir; paket kimliğinden (mağaza adı) ayrıdır.
-ACTIVITY=io.github.mhmmtbg.mobileillustrator.MainActivity
+ACTIVITY=io.github.mhmmtbg.nodist.MainActivity
 mkdir -p "$OUT"
 
 echo "== 1) Araç testleri =="
@@ -44,4 +44,4 @@ bash ci/smoke.sh "$DIST/test/app-debug.apk" "$OUT"
 
 echo "== 3) Sürüm derlemesi =="
 adb uninstall "$PKG" > /dev/null || true
-bash ci/smoke.sh "$DIST/nodea-$VERSION.apk" "$OUT/surum" quick
+bash ci/smoke.sh "$DIST/nodist-$VERSION.apk" "$OUT/surum" quick

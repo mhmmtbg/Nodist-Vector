@@ -5,7 +5,7 @@ FILES
 • Layers arrive with their names and visibility; artboards are kept
 • Tabs: keep several documents open at once; copy and paste objects and layers between documents
 • Import into document: add the layers of another .ai, PDF or SVG file to the open document
-• Saves losslessly in its own format (.nodea); exports .ai, PDF, SVG and transparent PNG
+• Saves losslessly in its own format (.nodist); exports .ai, PDF, SVG and transparent PNG
 • Export single layers or the selected layers as separate files
 • My documents: all your work in one place with thumbnails; autosave means nothing gets lost
 

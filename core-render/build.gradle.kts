@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "io.github.mhmmtbg.mobileillustrator.render"
+    namespace = "io.github.mhmmtbg.nodist.render"
     compileSdk = 36
 
     defaultConfig {

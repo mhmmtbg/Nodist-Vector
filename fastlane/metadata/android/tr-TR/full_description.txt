@@ -5,7 +5,7 @@ DOSYALAR
 • Dosyadaki katmanlar adları ve görünürlükleriyle gelir; çalışma yüzeyleri korunur
 • Sekmeler: birden çok belge aynı anda açık kalır; nesneleri ve katmanları belgeler arasında kopyala-yapıştır
 • Dışarıdan ekle: başka bir .ai, PDF ya da SVG dosyasının katmanlarını açık belgeye ekle
-• Kendi biçiminde (.nodea) kayıpsız kaydeder; .ai, PDF, SVG ve saydam zeminli PNG olarak dışa aktarır
+• Kendi biçiminde (.nodist) kayıpsız kaydeder; .ai, PDF, SVG ve saydam zeminli PNG olarak dışa aktarır
 • Tek tek katmanları ya da seçili katmanları ayrı dosya olarak dışa aktarır
 • Belgelerim: tüm çalışmaların küçük resimleriyle tek yerde; otomatik kayıt sayesinde hiçbir şey kaybolmaz
 

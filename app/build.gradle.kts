@@ -8,12 +8,12 @@ plugins {
 val ciVersionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
 
 android {
-    namespace = "io.github.mhmmtbg.mobileillustrator"
+    namespace = "io.github.mhmmtbg.nodist"
     compileSdk = 36
 
-    defaultConfig {
+        // Mağazadaki kalıcı paket kimliği (kod paketiyle, namespace, aynıdır).
         // Mağazadaki kalıcı paket kimliği. Kod paketleri (namespace) ayrıdır ve değişmeden kalır.
-        applicationId = "io.github.mhmmtbg.nodea"
+        applicationId = "io.github.mhmmtbg.nodist"
         minSdk = 26
         targetSdk = 36
         versionCode = ciVersionCode

@@ -7,7 +7,7 @@ sonra Play Console.
 
 | Ne | Nerede |
 | --- | --- |
-| Mağaza paketi (AAB) | Her derlemenin [Releases](../../../releases) sayfasında `nodea-N.aab` |
+| Mağaza paketi (AAB) | Her derlemenin [Releases](../../../releases) sayfasında `nodist-N.aab` |
 | Başlık, kısa ve uzun açıklama (TR, EN) | `fastlane/metadata/android/<dil>/*.txt` |
 | Simge 512×512 | `fastlane/metadata/android/<dil>/images/icon.png` |
 | Öne çıkan görsel 1024×500 | `…/images/featureGraphic.png` |
@@ -22,7 +22,7 @@ arayüz kodu, masaüstü çizicisiyle görüntüye çizilir); yazı tipi telefon
 ## 1. Ad, simge ve paket kimliği
 
 - Ad: **Nodist: Vektör** (mağaza başlığı "Nodist: Vektör" / "Nodist: Vector").
-- Paket kimliği: **`io.github.mhmmtbg.nodea`**. Mağazaya ilk yüklemeden sonra bir daha değiştirilemez.
+- Paket kimliği: **`io.github.mhmmtbg.nodist`**. Mağazaya ilk yüklemeden sonra bir daha değiştirilemez.
 - Simge: lacivert zemin üzerinde düğümleri ve tutamaçlarıyla bir Bezier eğrisi.
 
 Ad değişirse dokunulacak yerler: `app/src/main/res/values/strings.xml` (`app_name`),
@@ -62,7 +62,7 @@ ayıklama derlemesinde (otomatik testlerin kullandığı) reklam kapalıdır.
 
 ## 4. Play Console
 
-1. Uygulamayı oluştur (ücretsiz, uygulama). Paket adı: `io.github.mhmmtbg.nodea`.
+1. Uygulamayı oluştur (ücretsiz, uygulama). Paket adı: `io.github.mhmmtbg.nodist`.
 2. AAB'yi önce **dahili test** kanalına yükle. Satın alma ürünü ancak bir paket yüklendikten sonra tanımlanabilir.
 3. Para kazanma → Ürünler → Uygulama içi ürünler → ürün oluştur:
    - Ürün kimliği: **`coffee`** (uygulama bu kimliği arar; farklıysa `app/build.gradle.kts` içindeki `COFFEE_PRODUCT_ID`'yi değiştir)
