@@ -136,6 +136,8 @@ fun EditorScreen(vm: EditorViewModel, host: PlatformHost) {
     var spacingAxis by remember { mutableStateOf<Boolean?>(null) }
     var showSelectSame by remember { mutableStateOf(false) }
     var showArtboards by remember { mutableStateOf(false) }
+    var showSwatches by remember { mutableStateOf(false) }
+    var gridDialog by remember { mutableStateOf(false) }
     var exportingArtboard by remember { mutableStateOf<String?>(null) }
 
     // Geri tuşu önce açık panelleri kapatır.
@@ -162,6 +164,9 @@ fun EditorScreen(vm: EditorViewModel, host: PlatformHost) {
                 onToggleLanguage = host::toggleLanguage,
                 coffee = host.coffee,
                 onCoffee = { showCoffee = true },
+                onArtboards = { showArtboards = true },
+                onSwatches = { showSwatches = true },
+                onGridSize = { gridDialog = true },
             )
             TabStrip(vm)
             // Reklam şeridi: kahve ısmarlanınca kalkar. Belgelerim açıkken oradaki şerit görünür.
@@ -218,7 +223,7 @@ fun EditorScreen(vm: EditorViewModel, host: PlatformHost) {
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
                     .padding(vertical = 4.dp),
             ) {
-                PaintRow(vm, onCustomColor = { showPicker = true }, onGradient = { showGradient = true }, onStrokeOptions = { showStrokeOptions = true })
+                PaintRow(vm, onCustomColor = { showPicker = true }, onGradient = { showGradient = true }, onStrokeOptions = { showStrokeOptions = true }, onSwatches = { showSwatches = true })
                 if (!rail) ToolRow(vm)
             }
         }
@@ -264,6 +269,13 @@ fun EditorScreen(vm: EditorViewModel, host: PlatformHost) {
         SelectSameDialog(onDismiss = { showSelectSame = false }) { kind ->
             showSelectSame = false
             vm.selectSimilar(kind)
+        }
+    }
+    if (showSwatches) SwatchesDialog(vm, onDismiss = { showSwatches = false })
+    if (gridDialog) {
+        NumberDialog(tr("Izgara aralığı"), tr("Aralık"), state.gridSize, onDismiss = { gridDialog = false }) { v ->
+            gridDialog = false
+            vm.setGridSize(v)
         }
     }
     if (showArtboards) {
@@ -349,6 +361,9 @@ private fun TopBar(
     onToggleLanguage: () -> Unit,
     coffee: CoffeeState?,
     onCoffee: () -> Unit,
+    onArtboards: () -> Unit,
+    onSwatches: () -> Unit,
+    onGridSize: () -> Unit,
 ) {
     val state = vm.state
     var menu by remember { mutableStateOf(false) }
@@ -380,10 +395,22 @@ private fun TopBar(
                 item(tr("Dışarıdan ekle… (.nodist, .ai, .pdf, .svg)"), onImport)
                 item(tr("Görsel yerleştir…"), onPlaceImage)
                 if (vm.canPaste) item(tr("Yapıştır")) { vm.paste() }
-                item(tr("Çalışma yüzeyleri…")) { showArtboards = true }
+                item(tr("Çalışma yüzeyleri…"), onArtboards)
                 item(tr("Belgeyi adlandır…"), onRename)
                 item(tr("Tümünü seç")) { vm.selectAll() }
                 item(if (state.snapping) tr("Yakalama: açık") else tr("Yakalama: kapalı")) { vm.toggleSnapping() }
+                HorizontalDivider()
+                item(if (state.showRulers) tr("Cetveller: açık") else tr("Cetveller: kapalı")) { vm.toggleRulers() }
+                item(if (state.showGrid) tr("Izgara: açık") else tr("Izgara: kapalı")) { vm.toggleGrid() }
+                item(if (state.snapToGrid) tr("Izgaraya yakala: açık") else tr("Izgaraya yakala: kapalı")) { vm.toggleSnapToGrid() }
+                item(tr("Izgara aralığı…"), onGridSize)
+                item(if (state.showGuides) tr("Kılavuzlar: görünür") else tr("Kılavuzlar: gizli")) { vm.toggleGuides() }
+                if (state.document.guides.isNotEmpty()) {
+                    item(if (state.document.guides.any { !it.locked }) tr("Kılavuzları kilitle") else tr("Kılavuzların kilidini aç")) { vm.toggleGuidesLocked() }
+                    item(tr("Kılavuzları temizle")) { vm.clearGuidesCmd() }
+                }
+                item(tr("Renk örnekleri…"), onSwatches)
+                HorizontalDivider()
                 // Dil değiştirme: seçim kaydedilir ve ekran yeni dille yeniden kurulur.
                 item(tr("Dil: Türkçe")) { onToggleLanguage() }
                 if (coffee != null) {
@@ -596,6 +623,7 @@ private fun ContextBar(
             actions += tr("Dönüşüm araçları…") to onTransformTools
             if (vm.lastTransform != null) actions += tr("Tekrar dönüştür") to vm::repeatTransform
             actions += tr("Aynısını seç…") to onSelectSame
+            if (single != null) actions += tr("Kenarlara kılavuz") to vm::guidesFromSelection
         }
     }
     if (state.pen == null && mode == 0) {
@@ -717,7 +745,7 @@ private val ActionIcons: Map<String, ImageVector> by lazy {
         "Dışla" to AppIcons.Exclude, "Maske yap" to AppIcons.Mask, "Maskeyi bırak" to AppIcons.Unmask,
         "Bileşik yap" to AppIcons.Compound, "Bileşiği çöz" to AppIcons.Release, "Yolları birleştir" to AppIcons.Join,
         "Yol" to AppIcons.Nodes, "Dönüşüm araçları…" to AppIcons.Transform, "Tekrar dönüştür" to AppIcons.Transform,
-        "Aynısını seç…" to AppIcons.Select,
+        "Aynısını seç…" to AppIcons.Select, "Kenarlara kılavuz" to AppIcons.Shapes,
         "Hizala" to AppIcons.AlignLeft, "Şekil" to AppIcons.Shapes, "Dönüştür" to AppIcons.Transform,
         "Vektöre çevir" to AppIcons.Picture, "Metni düzenle" to AppIcons.Pencil, "Eğ" to AppIcons.Arc, "Yola çevir" to AppIcons.Nodes,
         "Kopyala" to AppIcons.Copy, "Kes" to AppIcons.Cut, "Yapıştır" to AppIcons.Paste, "Çoğalt" to AppIcons.Duplicate,
@@ -737,7 +765,7 @@ private val WarpLabels = listOf(
 )
 
 @Composable
-private fun PaintRow(vm: EditorViewModel, onCustomColor: () -> Unit, onGradient: () -> Unit, onStrokeOptions: () -> Unit) {
+private fun PaintRow(vm: EditorViewModel, onCustomColor: () -> Unit, onGradient: () -> Unit, onStrokeOptions: () -> Unit, onSwatches: () -> Unit) {
     val state = vm.state
     Column {
         if (state.paintTarget == PaintTarget.Stroke && state.stroke != null) {
@@ -794,6 +822,20 @@ private fun PaintRow(vm: EditorViewModel, onCustomColor: () -> Unit, onGradient:
                         color = AppColors.OnPanel,
                         style = MaterialTheme.typography.labelMedium,
                     )
+                    Text(
+                        tr("Örnekler"),
+                        Modifier
+                            .padding(horizontal = 4.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(AppColors.PanelRaised)
+                            .clickable(role = Role.Button, onClick = onSwatches)
+                            .padding(horizontal = 10.dp, vertical = 10.dp),
+                        color = AppColors.OnPanel,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                    for (sw in state.document.swatches) {
+                        SwatchButton(sw.color, current == sw.color, sw.name) { vm.setColor(sw.color) }
+                    }
                     for (c in Swatches) {
                         SwatchButton(c, current == c, "#%06X".format(c.toArgb() and 0xFFFFFF)) { vm.setColor(c) }
                     }

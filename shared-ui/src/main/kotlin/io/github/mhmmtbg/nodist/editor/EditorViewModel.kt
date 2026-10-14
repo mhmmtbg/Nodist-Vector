@@ -67,6 +67,17 @@ import io.github.mhmmtbg.nodist.model.renameArtboard
 import io.github.mhmmtbg.nodist.model.selectSame
 import io.github.mhmmtbg.nodist.model.setArtboardBounds
 import io.github.mhmmtbg.nodist.model.transformWith
+import io.github.mhmmtbg.nodist.model.Guide
+import io.github.mhmmtbg.nodist.model.addGuide
+import io.github.mhmmtbg.nodist.model.addSwatch
+import io.github.mhmmtbg.nodist.model.clearGuides
+import io.github.mhmmtbg.nodist.model.makeGuidesFrom
+import io.github.mhmmtbg.nodist.model.moveGuide
+import io.github.mhmmtbg.nodist.model.removeGuide
+import io.github.mhmmtbg.nodist.model.removeSwatch
+import io.github.mhmmtbg.nodist.model.renameSwatch
+import io.github.mhmmtbg.nodist.model.replaceSwatchColor
+import io.github.mhmmtbg.nodist.model.setGuidesLocked
 import io.github.mhmmtbg.nodist.model.erase
 import io.github.mhmmtbg.nodist.model.joinPaths
 import io.github.mhmmtbg.nodist.model.makeCompound
@@ -198,6 +209,8 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
         data class Pencil(val points: ArrayList<Vec2>, val nodeId: String, val layerId: String) : Drag
         /** Silgi: şimdiye dek silinmiş hali ([work]), etkin katman ve son konum; her adımda yalnızca yeni yol silinir. */
         data class Erase(val work: Document, val layerId: String, val last: Vec2, val skipped: Boolean) : Drag
+        /** Kılavuz çizgisi sürüklemesi: [base] sürükleme öncesi belge, [last] parmağın son ekran konumu. */
+        data class GuideDrag(val id: String, val vertical: Boolean, val isNew: Boolean, val base: Document, val last: Offset) : Drag
         data object PenHandle : Drag
         data class AnchorDrag(val nodeId: String, val ref: AnchorRef, val toLocal: Matrix, val origin: List<SubPath>, val start: Vec2) : Drag
         data class HandleDrag(val nodeId: String, val ref: AnchorRef, val outgoing: Boolean, val toLocal: Matrix, val origin: List<SubPath>) : Drag
@@ -336,7 +349,13 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
 
     // ---- İşaretçi ---------------------------------------------------------
 
+    /** Cetvel şeridinin ekrandaki kalınlığı (piksel); tuval ayarlar. */
+    var rulerPx = 0f
+
+    private fun inRuler(p: Offset) = state.showRulers && (p.x < rulerPx || p.y < rulerPx)
+
     fun onTap(screen: Offset) {
+        if (inRuler(screen)) return
         val p = viewport.toDocument(screen)
         when (state.tool) {
             Tool.Select -> {
@@ -390,7 +409,9 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
                 var delta = now - d.start
                 var guides: SnapResult? = null
                 if (d.bounds != null && d.targets.isNotEmpty()) {
-                    val snap = Snap.box(d.bounds.translate(delta.x, delta.y), d.targets, snapThreshold())
+                    val moved = d.bounds.translate(delta.x, delta.y)
+                    val (lx, ly) = extraLines(moved)
+                    val snap = Snap.box(moved, d.targets, snapThreshold(), lx, ly)
                     delta = Vec2(delta.x + snap.dx, delta.y + snap.dy)
                     guides = snap.takeIf { it.guidesX.isNotEmpty() || it.guidesY.isNotEmpty() }
                 }
@@ -407,7 +428,8 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
                 var end = now
                 var guides: SnapResult? = null
                 if (d.targets.isNotEmpty()) {
-                    val snap = Snap.point(now, d.targets, snapThreshold())
+                    val (lx, ly) = extraLines(Rect(now.x, now.y, now.x, now.y))
+                    val snap = Snap.point(now, d.targets, snapThreshold(), lx, ly)
                     end = Vec2(now.x + snap.dx, now.y + snap.dy)
                     guides = snap.takeIf { it.guidesX.isNotEmpty() || it.guidesY.isNotEmpty() }
                 }
@@ -428,6 +450,13 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
                 val r = d.work.erase(d.layerId, d.last, now, eraserRadius())
                 drag = d.copy(work = r.document, last = now, skipped = d.skipped || r.skippedUnsupported)
                 if (r.changed) state = state.copy(preview = r.document)
+            }
+            is Drag.GuideDrag -> {
+                var pos = if (d.vertical) now.x else now.y
+                if (state.snapToGrid && state.gridSize > 0) pos = Math.round(pos / state.gridSize) * state.gridSize
+                val doc = if (d.isNew) d.base.copy(guides = d.base.guides + Guide(d.id, d.vertical, pos)) else d.base.moveGuide(d.id, pos)
+                drag = d.copy(last = currentScreen)
+                state = state.copy(preview = doc)
             }
             Drag.PenHandle -> {
                 val pen = state.pen ?: return
@@ -483,6 +512,18 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
                     commit(d.work) { it.copy(selection = emptySet(), layerSelection = emptySet(), nodeEdit = null) }
                 }
             }
+            is Drag.GuideDrag -> {
+                // Cetvele ya da tuvalin dışına bırakılan kılavuz silinir.
+                val l = d.last
+                val outside = inRuler(l) || l.x < 0f || l.y < 0f || l.x > canvasSize.width || l.y > canvasSize.height
+                val preview = state.preview
+                state = state.copy(preview = null)
+                if (outside) {
+                    if (!d.isNew) commit(d.base.removeGuide(d.id))
+                } else if (preview != null) {
+                    commit(preview)
+                }
+            }
             Drag.PenHandle, is Drag.Pan, null -> {}
             else -> state.preview?.let { commit(it) }
         }
@@ -498,14 +539,29 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
         if (state.preview != null) state = state.copy(preview = null)
     }
 
+    /** [screen] noktasına yakın, kilitsiz kılavuz çizgisi. */
+    private fun guideAt(screen: Offset): Guide? {
+        if (!state.showGuides) return null
+        val p = viewport.toDocument(screen)
+        val reach = tolerance() * 0.6
+        fun gap(g: Guide) = kotlin.math.abs((if (g.vertical) p.x else p.y) - g.position)
+        return present.guides.filter { !it.locked }.minByOrNull(::gap)?.takeIf { gap(it) < reach }
+    }
+
     private fun beginDrag(startScreen: Offset): Drag {
         val start = viewport.toDocument(startScreen)
         val doc = present
         val tol = tolerance()
+        if (state.showRulers && (startScreen.x < rulerPx || startScreen.y < rulerPx)) {
+            // Cetvelden sürüklemek kılavuz çıkarır: soldaki cetvelden dikey, üstteki cetvelden yatay.
+            if (startScreen.x < rulerPx && startScreen.y < rulerPx) return Drag.Pan(startScreen)
+            return Drag.GuideDrag(newId(), startScreen.x < rulerPx, true, doc, startScreen)
+        }
         when (state.tool) {
             Tool.Select -> {
                 selectionHandleAt(startScreen)?.let { return it }
-                val hit = doc.hitTest(start, tol) ?: return Drag.Marquee(start)
+                val hit = doc.hitTest(start, tol)
+                    ?: return guideAt(startScreen)?.let { Drag.GuideDrag(it.id, it.vertical, false, doc, startScreen) } ?: Drag.Marquee(start)
                 val ids = if (hit.id in state.selection) state.selection else setOf(hit.id)
                 if (ids != state.selection) state = state.withSelection(ids)
                 return Drag.Move(ids, start, doc.boundsOf(ids), snapTargets(ids))
@@ -533,7 +589,7 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
                 }
                 if (state.tool == Tool.Pencil) return Drag.Pencil(arrayListOf(start), newId(), layer.id)
                 val targets = snapTargets(emptySet())
-                val snap = if (targets.isEmpty()) null else Snap.point(start, targets, snapThreshold())
+                val snap = if (targets.isEmpty()) null else extraLines(Rect(start.x, start.y, start.x, start.y)).let { (lx, ly) -> Snap.point(start, targets, snapThreshold(), lx, ly) }
                 return Drag.Create(if (snap == null) start else Vec2(start.x + snap.dx, start.y + snap.dy), newId(), layer.id, targets)
             }
             Tool.Eyedropper, Tool.Hand -> return Drag.Pan(startScreen)
@@ -541,6 +597,22 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
     }
 
     private fun snapThreshold(): Double = touchTolerancePx * 0.45 / viewport.scale
+
+    /** Nesnelerin kenarlarına ek yapışma çizgileri: görünür kılavuzlar ve (açıksa) ızgara. [box] taşınan kutudur. */
+    private fun extraLines(box: Rect): Pair<List<Double>, List<Double>> {
+        if (!state.snapping) return emptyList<Double>() to emptyList()
+        var xs: List<Double> = emptyList()
+        var ys: List<Double> = emptyList()
+        if (state.showGuides) {
+            xs = present.guides.filter { it.vertical }.map { it.position }
+            ys = present.guides.filter { !it.vertical }.map { it.position }
+        }
+        if (state.snapToGrid) {
+            xs = xs + Snap.gridLines(doubleArrayOf(box.left, box.center.x, box.right), state.gridSize)
+            ys = ys + Snap.gridLines(doubleArrayOf(box.top, box.center.y, box.bottom), state.gridSize)
+        }
+        return xs to ys
+    }
 
     /**
      * Yapışılabilecek kutular: çalışma yüzeyleri ve taşınmayan üst düzey nesneler. Çok kalabalık belgelerde
@@ -1082,6 +1154,72 @@ class EditorViewModel(private val io: DocumentIo, private val scope: CoroutineSc
     fun releaseClippingMask() {
         val id = state.selection.singleOrNull() ?: return
         commit(present.releaseClippingMask(id))
+    }
+
+    // ---- Cetveller, kılavuzlar, ızgara ---------------------------------------------
+
+    fun toggleRulers() { state = state.copy(showRulers = !state.showRulers) }
+
+    fun toggleGrid() { state = state.copy(showGrid = !state.showGrid) }
+
+    fun toggleSnapToGrid() {
+        val on = !state.snapToGrid
+        state = state.copy(snapToGrid = on, message = if (on) tr("Izgaraya yakalama açık") else tr("Izgaraya yakalama kapalı"))
+    }
+
+    fun toggleGuides() { state = state.copy(showGuides = !state.showGuides) }
+
+    fun setGridSize(size: Double) {
+        if (size > 0.0) state = state.copy(gridSize = size.coerceIn(0.5, 5000.0))
+    }
+
+    /** Kılavuzlar kilitliyse hepsini açar, değilse hepsini kilitler. */
+    fun toggleGuidesLocked() {
+        val doc = present
+        if (doc.guides.isEmpty()) return
+        commit(doc.setGuidesLocked(doc.guides.any { !it.locked }))
+    }
+
+    fun clearGuidesCmd() = commit(present.clearGuides())
+
+    /** Seçili tek nesnenin kenarlarına dört kılavuz koyar. */
+    fun guidesFromSelection() {
+        val id = state.selection.singleOrNull() ?: return
+        commit(present.makeGuidesFrom(id)) { it.copy(message = tr("Kenarlara kılavuz eklendi")) }
+    }
+
+    // ---- Renk örnekleri ------------------------------------------------------------
+
+    /** Dolgu ya da kontur için seçili renk (hangisi etkinse). */
+    private fun currentPaintColor(): Rgba? = if (state.paintTarget == PaintTarget.Stroke) state.stroke else state.fill
+
+    fun addSwatchFromCurrent() {
+        val c = currentPaintColor()
+        if (c == null) {
+            state = state.copy(message = tr("Eklenecek renk yok"))
+            return
+        }
+        commit(present.addSwatch(c))
+    }
+
+    fun addDesignColorsAsSwatches() {
+        val colors = present.designColors()
+        if (colors.isEmpty()) {
+            state = state.copy(message = tr("Belgede renk bulunamadı"))
+            return
+        }
+        commit(colors.fold(present) { d, c -> d.addSwatch(c) }) { it.copy(message = tr("%s renk örneği eklendi", colors.size)) }
+    }
+
+    fun removeSwatchCmd(index: Int) = commit(present.removeSwatch(index))
+
+    fun renameSwatchCmd(index: Int, name: String) = commit(present.renameSwatch(index, name))
+
+    /** Örneğin rengini değiştirir; belgede o rengi kullanan her yer de değişir. */
+    fun editSwatchColor(index: Int, color: Rgba) = commit(present.replaceSwatchColor(index, color))
+
+    fun applySwatch(index: Int) {
+        present.swatches.getOrNull(index)?.let { setColor(it.color) }
     }
 
     // ---- Dönüşüm araçları ---------------------------------------------------------

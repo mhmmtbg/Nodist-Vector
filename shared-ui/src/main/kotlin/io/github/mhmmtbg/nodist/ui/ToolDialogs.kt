@@ -296,3 +296,70 @@ fun SelectSameDialog(onDismiss: () -> Unit, onPick: (io.github.mhmmtbg.nodist.mo
         dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Vazgeç")) } },
     )
 }
+
+/**
+ * Renk örnekleri: belgeye kayıtlı renkler. Bir örneğin rengini değiştirmek, belgede o rengi kullanan her yeri de değiştirir.
+ */
+@Composable
+fun SwatchesDialog(vm: EditorViewModel, onDismiss: () -> Unit) {
+    val swatches = vm.state.document.swatches
+    var selected by remember { mutableStateOf<Int?>(null) }
+    var renaming by remember { mutableStateOf<Int?>(null) }
+    var editing by remember { mutableStateOf<Int?>(null) }
+    val sel = selected?.takeIf { it in swatches.indices }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(tr("Renk örnekleri")) },
+        text = {
+            Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (swatches.isEmpty()) {
+                    Text(tr("Henüz renk örneği yok. Seçili rengi ya da belgedeki renkleri ekleyin."), style = MaterialTheme.typography.bodyMedium)
+                }
+                for (row in swatches.withIndex().toList().chunked(6)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for ((i, sw) in row) {
+                            Box(
+                                Modifier
+                                    .size(44.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .border(2.dp, if (i == sel) AppColors.Accent else Color.Transparent, RoundedCornerShape(10.dp))
+                                    .clickable(role = Role.Button) { selected = i }
+                                    .padding(4.dp)
+                                    .semantics { contentDescription = sw.name },
+                                contentAlignment = Alignment.Center,
+                            ) { ColorDot(sw.color, Modifier.size(34.dp)) }
+                        }
+                    }
+                }
+                if (sel != null) {
+                    Text(swatches[sel].name, style = MaterialTheme.typography.titleSmall)
+                    Row(Modifier.horizontalScroll(rememberScrollState())) {
+                        TextButton(onClick = { vm.applySwatch(sel) }) { Text(tr("Uygula")) }
+                        TextButton(onClick = { renaming = sel }) { Text(tr("Adlandır")) }
+                        TextButton(onClick = { editing = sel }) { Text(tr("Rengi değiştir")) }
+                        TextButton(onClick = { vm.removeSwatchCmd(sel); selected = null }) { Text(tr("Sil")) }
+                    }
+                    Text(
+                        tr("Rengi değiştirmek, belgede o rengi kullanan her yeri de değiştirir."),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = AppColors.OnPanelMuted,
+                    )
+                }
+                HorizontalDivider(color = AppColors.Divider)
+                Row(Modifier.horizontalScroll(rememberScrollState())) {
+                    TextButton(onClick = vm::addSwatchFromCurrent) { Text(tr("Seçili rengi ekle")) }
+                    TextButton(onClick = vm::addDesignColorsAsSwatches) { Text(tr("Belgedeki renkleri ekle")) }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Tamam")) } },
+    )
+    renaming?.let { i ->
+        val sw = swatches.getOrNull(i)
+        if (sw == null) renaming = null else NameDialog(tr("Yeniden adlandır"), sw.name, onDismiss = { renaming = null }) { renaming = null; vm.renameSwatchCmd(i, it) }
+    }
+    editing?.let { i ->
+        val sw = swatches.getOrNull(i)
+        if (sw == null) editing = null else ColorPickerDialog(sw.color, onDismiss = { editing = null }) { editing = null; vm.editSwatchColor(i, it) }
+    }
+}

@@ -156,6 +156,13 @@ data class EditorState(
     /** Çokgen aracının kenar sayısı. */
     val polygonSides: Int = 6,
     val alignTarget: AlignTarget = AlignTarget.Selection,
+    /** Cetveller (üstte ve solda), ızgara ve kılavuz çizgileri; cetvelden sürükleyerek kılavuz çıkarılır. */
+    val showRulers: Boolean = false,
+    val showGrid: Boolean = false,
+    val snapToGrid: Boolean = false,
+    /** Izgara aralığı (belge birimi). */
+    val gridSize: Double = 50.0,
+    val showGuides: Boolean = true,
     /** Yıldız aracının uç sayısı ve iç yarıçapının dış yarıçapa oranı. */
     val starPoints: Int = 5,
     val starInner: Double = 0.5,

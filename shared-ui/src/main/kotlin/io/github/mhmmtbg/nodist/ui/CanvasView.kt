@@ -30,6 +30,12 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -68,7 +74,12 @@ fun CanvasView(vm: EditorViewModel, modifier: Modifier = Modifier) {
     val imagePaint = remember { Paint() }
     val density = LocalDensity.current
     val tolerancePx = with(density) { 14.dp.toPx() }
-    SideEffect { vm.touchTolerancePx = tolerancePx }
+    val rulerPx = with(density) { RULER_DP.dp.toPx() }
+    SideEffect {
+        vm.touchTolerancePx = tolerancePx
+        vm.rulerPx = rulerPx
+    }
+    val textMeasurer = rememberTextMeasurer()
 
     // Karmaşık belgelerde kaydırma ve yakınlaştırma sırasında binlerce yolu her karede yeniden çizmek
     // yerine, arka planda hazırlanmış bir bit eşlem gösterilir; hareket bitince vektör çizime dönülür.
@@ -263,6 +274,15 @@ fun CanvasView(vm: EditorViewModel, modifier: Modifier = Modifier) {
         val document = state.document
 
         clipRect {
+            if (state.showGrid) drawGrid(viewport, state.gridSize)
+            if (state.showGuides) {
+                val guideColor = Color(0xFF29C5E6)
+                for (g in document.guides) {
+                    val p = viewport.toScreen(if (g.vertical) Vec2(g.position, 0.0) else Vec2(0.0, g.position))
+                    if (g.vertical) drawLine(guideColor, Offset(p.x, 0f), Offset(p.x, size.height), 1.dp.toPx())
+                    else drawLine(guideColor, Offset(0f, p.y), Offset(size.width, p.y), 1.dp.toPx())
+                }
+            }
             val editing = vm.editedPath()
             if (state.tool == Tool.Direct && editing != null) {
                 val (node, world) = editing
@@ -331,6 +351,8 @@ fun CanvasView(vm: EditorViewModel, modifier: Modifier = Modifier) {
                 }
             }
 
+            if (state.showRulers) drawRulers(viewport, textMeasurer, rulerPx)
+
             state.marquee?.let { m ->
                 val tl = viewport.toScreen(Vec2(m.left, m.top))
                 val size = Size((m.width * viewport.scale).toFloat(), (m.height * viewport.scale).toFloat())
@@ -343,6 +365,85 @@ fun CanvasView(vm: EditorViewModel, modifier: Modifier = Modifier) {
         }
       }
     }
+}
+
+private const val RULER_DP = 20
+
+/** Izgara: çizgi aralığı ekranda çok sıkışırsa 5 katına çıkar. */
+private fun DrawScope.drawGrid(viewport: Viewport, grid: Double) {
+    if (grid <= 0.0) return
+    var step = grid
+    while (step * viewport.scale < 8.0) step *= 5
+    val tl = viewport.toDocument(Offset.Zero)
+    val br = viewport.toDocument(Offset(size.width, size.height))
+    val color = Color(0x55808090)
+    var n = 0
+    var x = Math.floor(tl.x / step) * step
+    while (x <= br.x && n++ < 3000) {
+        val sx = viewport.toScreen(Vec2(x, 0.0)).x
+        drawLine(color, Offset(sx, 0f), Offset(sx, size.height), 1f)
+        x += step
+    }
+    n = 0
+    var y = Math.floor(tl.y / step) * step
+    while (y <= br.y && n++ < 3000) {
+        val sy = viewport.toScreen(Vec2(0.0, y)).y
+        drawLine(color, Offset(0f, sy), Offset(size.width, sy), 1f)
+        y += step
+    }
+}
+
+/** Ekranda en az ~60 piksel aralıklı, "yuvarlak" (1-2-5) bir cetvel adımı. */
+private fun rulerStep(scale: Float): Double {
+    var e = -3
+    while (e <= 8) {
+        for (m in doubleArrayOf(1.0, 2.0, 5.0)) {
+            val step = m * Math.pow(10.0, e.toDouble())
+            if (step * scale >= 60.0) return step
+        }
+        e++
+    }
+    return 1e8
+}
+
+private fun rulerLabel(v: Double): String =
+    if (Math.abs(v - Math.round(v)) < 1e-9) Math.round(v).toString() else "%.2f".format(java.util.Locale.ROOT, v).trimEnd('0').trimEnd('.')
+
+/** Üstte ve solda cetveller: belge birimiyle işaretler; çalışma alanı kaydıkça ve yakınlaştıkça güncellenir. */
+private fun DrawScope.drawRulers(viewport: Viewport, measurer: TextMeasurer, r: Float) {
+    val bg = Color(0xF21C1C20)
+    val tick = Color(0xFF8A8A92)
+    val style = TextStyle(color = Color(0xFFB8B8C0), fontSize = 9.sp)
+    drawRect(bg, Offset.Zero, Size(size.width, r))
+    drawRect(bg, Offset.Zero, Size(r, size.height))
+    val major = rulerStep(viewport.scale)
+    val minor = major / 5.0
+    val tl = viewport.toDocument(Offset(r, r))
+    val br = viewport.toDocument(Offset(size.width, size.height))
+    var n = 0
+    var x = Math.floor(tl.x / minor) * minor
+    while (x <= br.x && n++ < 6000) {
+        val sx = viewport.toScreen(Vec2(x, 0.0)).x
+        val isMajor = Math.abs(x / major - Math.round(x / major)) < 1e-6
+        drawLine(tick, Offset(sx, r), Offset(sx, r - if (isMajor) r * 0.6f else r * 0.28f), 1f)
+        if (isMajor) drawText(measurer, rulerLabel(x), topLeft = Offset(sx + 2f, 0f), style = style)
+        x += minor
+    }
+    n = 0
+    var y = Math.floor(tl.y / minor) * minor
+    while (y <= br.y && n++ < 6000) {
+        val sy = viewport.toScreen(Vec2(0.0, y)).y
+        val isMajor = Math.abs(y / major - Math.round(y / major)) < 1e-6
+        drawLine(tick, Offset(r, sy), Offset(r - if (isMajor) r * 0.6f else r * 0.28f, sy), 1f)
+        if (isMajor) {
+            val pivot = Offset(1f, sy - 2f)
+            rotate(degrees = -90f, pivot = pivot) { drawText(measurer, rulerLabel(y), topLeft = pivot, style = style) }
+        }
+        y += minor
+    }
+    drawRect(Color(0xFF26262B), Offset.Zero, Size(r, r))
+    drawLine(tick, Offset(0f, r), Offset(size.width, r), 1f)
+    drawLine(tick, Offset(r, 0f), Offset(r, size.height), 1f)
 }
 
 private fun DrawScope.anchorMark(p: Offset, filled: Boolean) {
