@@ -79,12 +79,14 @@ bar_find() {
   adb shell input swipe $((W * 20 / 100)) "$y" $((W * 90 / 100)) "$y" 150
   adb shell input swipe $((W * 20 / 100)) "$y" $((W * 90 / 100)) "$y" 150
   sleep 1
-  for _ in $(seq 1 14); do
+  # Her adımda çubuk yaklaşık üçte bir genişlik kayar; uzun çubuklarda son eylem de görülebilsin diye bol adım verilir
+  # ve son kaydırmadan sonra da bakılır.
+  for _ in $(seq 1 20); do
     if has "$1"; then return 0; fi
-    adb shell input swipe $((W * 70 / 100)) "$y" $((W * 35 / 100)) "$y" 500
+    adb shell input swipe $((W * 75 / 100)) "$y" $((W * 25 / 100)) "$y" 500
     sleep 1
   done
-  return 1
+  has "$1"
 }
 bar_tap() { bar_find "$1" || fail "Seçim çubuğunda bulunamadı: $1"; tap "$1"; }
 dismiss() { if has "Tamam"; then tap "Tamam"; fi; }
