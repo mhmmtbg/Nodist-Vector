@@ -11,7 +11,7 @@ DIST=$1
 OUT=$2
 VERSION=$3
 KIND=${4:-phone}
-PKG=io.github.mhmmtbg.nodist
+PKG=com.mhmmtbg.nodist
 # Etkinlik sınıfı kod paketindedir; paket kimliğinden (mağaza adı) ayrıdır.
 ACTIVITY=io.github.mhmmtbg.nodist.MainActivity
 mkdir -p "$OUT"

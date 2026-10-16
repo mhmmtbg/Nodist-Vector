@@ -12,8 +12,9 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        // Mağazadaki kalıcı paket kimliği (kod paketiyle, namespace, aynıdır).
-        applicationId = "io.github.mhmmtbg.nodist"
+        // Mağazadaki kalıcı paket kimliği. Kod paketi (namespace, Kotlin paketleri) io.github.mhmmtbg.nodist olarak
+        // kalır; ikisi birbirinden bağımsızdır.
+        applicationId = "com.mhmmtbg.nodist"
         minSdk = 26
         targetSdk = 36
         versionCode = ciVersionCode

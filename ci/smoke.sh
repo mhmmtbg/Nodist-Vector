@@ -8,7 +8,7 @@ APK=$1
 OUT=$2
 # "quick": yalnızca açılış, dosya açma ve katmanlar (küçültülmüş sürüm derlemesinin bozulmadığını görmek için).
 MODE=${3:-full}
-PKG=io.github.mhmmtbg.nodist
+PKG=com.mhmmtbg.nodist
 # Etkinlik sınıfı kod paketindedir; paket kimliğinden (mağaza adı) ayrıdır.
 ACTIVITY=io.github.mhmmtbg.nodist.MainActivity
 mkdir -p "$OUT"

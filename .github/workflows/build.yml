@@ -269,7 +269,7 @@ jobs:
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: io.github.mhmmtbg.nodist
+          packageName: com.mhmmtbg.nodist
           releaseFiles: dist/nodist-${{ github.run_number }}.aab
           releaseName: "1.0.${{ github.run_number }}"
           track: ${{ vars.PLAY_TRACK || 'internal' }}
