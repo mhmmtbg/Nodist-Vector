@@ -291,7 +291,9 @@ internal fun ContextBar(
                     val paletteSlot = if (acts.isNotEmpty()) slot else 0.dp
                     val free = maxWidth - stepperWidth * steppers.size - paletteSlot
                     val fit = if (free > 0.dp) (free / slot).toInt() else 0
-                    val quick = QuickOrder.mapNotNull { k -> acts.firstOrNull { it.key == k } }.take(fit)
+                    // Önce öne çıkan eylemler; geniş ekranda yer kaldıkça diğerleri de palet sırasıyla eklenir.
+                    val first = QuickOrder.mapNotNull { k -> acts.firstOrNull { it.key == k } }
+                    val quick = (first + acts.filter { it !in first }).take(fit)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         for (st in steppers) StepperControl(st)
                         for (a in quick) HintIcon(ActionIcons[a.key] ?: AppIcons.More, tr(a.key), active = a.active, onClick = a.onClick)
