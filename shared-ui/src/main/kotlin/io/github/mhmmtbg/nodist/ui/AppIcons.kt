@@ -370,4 +370,12 @@ object AppIcons {
     val Scale by lazy { icon("Scale", frame(3.0, 9.0, 12.0, 12.0, 1.5) + "M13,3 H21 V11 L18.2,8.2 L13.8,12.6 L11.4,10.2 L15.8,5.8 Z") }
     val Reflect by lazy { icon("Reflect", r(11.25, 2, 1.5, 20) + "M9.5,5 V19 L2.5,19 Z M14.5,5 L21.5,19 H14.5 Z M16,11.2 V17.5 H19.1 Z", evenOdd = true) }
     val Shear by lazy { icon("Shear", "M7,5 H22 L17,19 H2 Z M8.2,6.5 L4.1,17.5 H15.8 L19.9,6.5 Z", evenOdd = true) }
+    val Apps by lazy { icon("Apps", (0..2).joinToString("") { y -> (0..2).joinToString("") { x -> r(3.5 + x * 6.5, 3.5 + y * 6.5, 4, 4) } }) }
+    val Numeric by lazy {
+        icon("Numeric", frame(2.0, 5.0, 20.0, 14.0, 1.5) + "M6,9 h2 v6 h-1.5 v-4.5 h-0.5 z M10,9 h4 v3.6 h-2.5 v1 h2.5 v1.4 h-4 v-3.4 h2.5 v-1.2 h-2.5 z M15.5,9 h3.5 v6 h-3.5 v-1.4 h2 v-0.9 h-2 v-1.4 h2 v-0.9 h-2 z")
+    }
+    val Repeat by lazy {
+        icon("Repeat", "M7,7 h10 v3 l4,-4 l-4,-4 v3 H5 v6 h2 z M17,17 H7 v-3 l-4,4 l4,4 v-3 h12 v-6 h-2 z")
+    }
+    val SelectSame by lazy { icon("SelectSame", r(2, 4, 8, 8) + r(14, 4, 8, 8) + r(4, 16, 16, 1.6) + r(4, 19.4, 16, 1.6)) }
 }

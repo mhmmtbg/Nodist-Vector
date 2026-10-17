@@ -241,4 +241,12 @@ internal val FeatureStrings: Map<String, String> = mapOf(
     "Üstteki doğrusal gradyanlı şekil saydamlığı belirler" to "The linear-gradient shape on top sets the transparency",
     "Şekiller" to "Shapes",
     "Kesme araçları" to "Cutting tools",
+    "Düzen" to "Edit",
+    "Sıra" to "Order",
+    "Şekil işlemleri" to "Shape operations",
+    "Metin eğme" to "Text warp",
+    "Tüm eylemler" to "All actions",
+    "Eylem paleti" to "Action palette",
+    "Paleti kapat" to "Close palette",
+    "Dönüşüm" to "Transform",
 )

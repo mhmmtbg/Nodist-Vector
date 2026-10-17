@@ -69,26 +69,34 @@ expect() { dump; local v; v=$(node "$1" "$2") || fail "Öğe bulunamadı: $1"; [
 wait_for() { for _ in $(seq 1 40); do if has "$1"; then return 0; fi; sleep 1; done; fail "Beklenen öğe gelmedi: $1"; }
 wait_gone() { for _ in $(seq 1 60); do if ! has "$1"; then return 0; fi; sleep 1; done; fail "Hâlâ ekranda: $1"; }
 # Açılan uyarı penceresini (varsa) kapatır.
-# Seçim çubuğundaki eylemler yatay kayar; aranan eylem görünmüyorsa çubuk sola kaydırılarak bulunur.
-bar_find() {
-  local xy y
-  if has "$1"; then return 0; fi
-  # Önce çubuğun başına dönülür, sonra adım adım sola kaydırılır.
-  xy=$(node "Seçim eylemleri" center) || return 1
-  y=${xy##* }
-  adb shell input swipe $((W * 20 / 100)) "$y" $((W * 90 / 100)) "$y" 150
-  adb shell input swipe $((W * 20 / 100)) "$y" $((W * 90 / 100)) "$y" 150
-  sleep 1
-  # Her adımda çubuk yaklaşık üçte bir genişlik kayar; uzun çubuklarda son eylem de görülebilsin diye bol adım verilir
-  # ve son kaydırmadan sonra da bakılır.
-  for _ in $(seq 1 20); do
+# Seçim eylemleri: sık kullanılanlar kısa simge çubuğundadır, hepsi "Tüm eylemler" paletindedir.
+palette_find() {
+  local xy x y
+  for _ in 1 2 3 4 5 6; do
     if has "$1"; then return 0; fi
-    adb shell input swipe $((W * 75 / 100)) "$y" $((W * 25 / 100)) "$y" 500
+    xy=$(node "Eylem paleti" center) || return 1
+    x=${xy%% *}; y=${xy##* }
+    adb shell input swipe "$x" $((y + H * 8 / 100)) "$x" $((y - H * 8 / 100)) 400
     sleep 1
   done
   has "$1"
 }
-bar_tap() { bar_find "$1" || fail "Seçim çubuğunda bulunamadı: $1"; tap "$1"; }
+act() {
+  if has "$1"; then tap "$1"; return 0; fi
+  has "Tüm eylemler" || fail "Seçim eylemleri yok (seçim boş): $1"
+  tap "Tüm eylemler"
+  palette_find "$1" || fail "Eylem bulunamadı: $1"
+  tap "$1"
+}
+act_has() {
+  if has "$1"; then return 0; fi
+  has "Tüm eylemler" || return 1
+  tap "Tüm eylemler"
+  local ok=1
+  if palette_find "$1"; then ok=0; fi
+  tap "Paleti kapat"
+  return $ok
+}
 dismiss() { if has "Tamam"; then tap "Tamam"; fi; }
 # Şekil araçları "Şekiller" düğmesinin menüsündedir.
 shape() { tap "Şekiller"; tap "$1"; }
@@ -161,11 +169,11 @@ fi
 tap "Seçim"
 adb shell input tap $((W * 46 / 100)) $((H * 44 / 100))
 sleep 1
-bar_find "Çoğalt" || fail "dokununca nesne seçilmedi"
+has "Tüm eylemler" || fail "dokununca nesne seçilmedi"
 shot 05-secim
 adb shell input swipe $((W * 46 / 100)) $((H * 44 / 100)) $((W * 52 / 100)) $((H * 52 / 100)) 600
-bar_tap "Çoğalt"
-bar_tap "Öne"
+act "Çoğalt"
+act "Öne"
 alive "taşıma ve çoğaltma"
 shot 06-tasima
 
@@ -187,8 +195,8 @@ adb shell input tap $((W * 60 / 100)) $((H * 24 / 100))
 adb shell input swipe $((W * 75 / 100)) $((H * 30 / 100)) $((W * 82 / 100)) $((H * 26 / 100)) 400
 adb shell input tap $((W * 62 / 100)) $((H * 32 / 100))
 shot 07-kalem
-bar_tap "Kapat ve bitir"
-bar_find "Çoğalt" || fail "kalemle çizilen yol seçilmedi"
+act "Kapat ve bitir"
+has "Tüm eylemler" || fail "kalemle çizilen yol seçilmedi"
 
 tap "Kurşun kalem"
 adb shell input swipe $((W * 15 / 100)) $((H * 66 / 100)) $((W * 80 / 100)) $((H * 70 / 100)) 700
@@ -200,7 +208,7 @@ wait_for "Metin ekle"
 adb shell input text "Merhaba"
 sleep 1
 tap "Tamam"
-bar_find "Metni düzenle" || fail "metin eklenmedi"
+act_has "Metni düzenle" || fail "metin eklenmedi"
 shot 08-cizimler
 
 # 5) Doğrudan seçim: kalemle çizilen yolun düğümünü taşı
@@ -214,15 +222,15 @@ alive "düğüm düzenleme"
 # 6) Tümünü seç, grupla, geri al/yinele
 tap "Dosya menüsü"
 tap "Tümünü seç"
-bar_tap "Grupla"
-bar_find "Grubu çöz" || fail "gruplama çalışmadı"
+act "Grupla"
+act_has "Grubu çöz" || fail "gruplama çalışmadı"
 tap "Geri al"
 expect "Yinele" enabled true "geri aldıktan sonra yinelenebilmeli"
 tap "Yinele"
 # Geri al/yinele seçimi boşaltır: gruba (içindeki dikdörtgene) dokunarak yeniden seç.
 adb shell input tap $((W * 22 / 100)) $((H * 26 / 100))
 sleep 1
-bar_tap "Grubu çöz"
+act "Grubu çöz"
 shot 10-grup
 
 # 6b) Dışa aktarma: sistemin dosya kaydetme ekranı üzerinden. Bu ekran Android sürümüne göre değiştiği için
@@ -307,10 +315,14 @@ shot 20-sekiller-menusu
 tap "Dikdörtgen"
 adb shell input swipe $((W * 30 / 100)) $((H * 40 / 100)) $((W * 60 / 100)) $((H * 55 / 100)) 400
 # 9a) Canlı efektler: çizilen dikdörtgenin köşeleri sonradan yuvarlanır, gölge eklenip panelde görünür.
-bar_tap "Köşe +"
-bar_tap "Köşe +"
+act "Köşe +"
+act "Köşe +"
 shot 21-kose-yuvarlama
-bar_tap "Görünüm…"
+tap "Tüm eylemler"
+wait_for "Eylem paleti"
+shot 21a-eylem-paleti
+tap "Paleti kapat"
+act "Görünüm…"
 wait_for "Efekt ekle"
 has "Köşe yuvarlama" || fail "köşe yuvarlama canlı efekt olarak listelenmedi"
 shot 22-gorunum-paneli
@@ -323,7 +335,7 @@ shot 24-gorunum-golgeli
 tap "Kapat"
 alive "canlı efektler"
 shot 25-golge
-bar_tap "Dönüşüm araçları…"
+act "Dönüşüm araçları…"
 wait_for "Sabit nokta"
 tap "Yatır"
 shot 26-donusum-araclari
@@ -350,16 +362,13 @@ shape "Elips"
 adb shell input swipe $((W * 50 / 100)) $((H * 48 / 100)) $((W * 80 / 100)) $((H * 62 / 100)) 400
 tap "Dosya menüsü"
 tap "Tümünü seç"
-bar_tap "Hizala"
-bar_tap "Üste"
-bar_tap "‹ Geri"
-bar_tap "Şekil"
-bar_tap "Birleştir"
+act "Üste"
+act "Birleştir"
 sleep 1
 alive "pathfinder"
 tap "Gradyan"
 tap "Uygula"
-bar_tap "Dönüştür"
+act "Dönüştür"
 tap "Uygula"
 tap "Katmanlar"
 has "1 nesne" || fail "Birleştir iki şekli tek yola indirmedi"

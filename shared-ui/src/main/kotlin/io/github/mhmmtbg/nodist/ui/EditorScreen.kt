@@ -542,245 +542,8 @@ internal fun BarButton(icon: ImageVector, label: String, enabled: Boolean = true
 }
 
 /** Seçime ya da etkin araca göre değişen eylemler. Yapılacak bir şey yoksa yer kaplamaz. */
-@Composable
-private fun ContextBar(
-    vm: EditorViewModel,
-    modifier: Modifier,
-    onRename: (String) -> Unit,
-    onTransform: () -> Unit,
-    onExport: () -> Unit,
-    onTransformTools: () -> Unit,
-    onSpacing: (Boolean) -> Unit,
-    onSelectSame: () -> Unit,
-    onAppearance: () -> Unit,
-) {
-    val state = vm.state
-    val actions = ArrayList<Pair<String, () -> Unit>>()
-    // Alt menüler: "Hizala" ve "Şekil" eylemleri aynı satırda açılır.
-    var mode by remember { mutableStateOf(0) }
-    var offsetDialog by remember { mutableStateOf(false) }
-    if (offsetDialog) {
-        NumberDialog(tr("Yolu ötele"), tr("Mesafe (negatif küçültür)"), 10.0, onDismiss = { offsetDialog = false }) { v ->
-            offsetDialog = false
-            mode = 0
-            vm.offsetPathCmd(v)
-        }
-    }
-    if (state.selection.isEmpty() && mode != 0) mode = 0
-    val doc = state.history.present
-    val edit = state.nodeEdit
-    // Eğme ayarı açıkken seçili metin (sürgü oynarken önizlemedeki hali).
-    val warpNode = state.selection.singleOrNull()?.let { state.document.findNode(it) } as? TextNode
-    if (mode == 3 && warpNode == null) mode = 0
-    when {
-        state.pen != null -> {
-            actions += tr("Bitir") to { vm.finishPen(close = false) }
-            if (state.pen.anchors.size >= 3) actions += tr("Kapat ve bitir") to { vm.finishPen(close = true) }
-            actions += tr("İptal") to vm::cancelPen
-        }
-        state.tool == Tool.Direct && edit?.anchor != null -> {
-            val anchor = (doc.findNode(edit.nodeId) as? PathNode)?.subpaths?.anchorAt(edit.anchor)
-            val curved = anchor != null && (anchor.handleIn != null || anchor.handleOut != null)
-            actions += (if (curved) tr("Köşeye çevir") else tr("Yumuşat")) to vm::toggleSmoothAnchor
-            actions += tr("Düğümü sil") to vm::deleteSelection
-        }
-        state.selection.isNotEmpty() && mode == 1 -> {
-            actions += tr("‹ Geri") to { mode = 0 }
-            actions += tr("Sola") to { vm.alignSelection(Align.Left) }
-            actions += tr("Yatay ortala") to { vm.alignSelection(Align.CenterH) }
-            actions += tr("Sağa") to { vm.alignSelection(Align.Right) }
-            actions += tr("Üste") to { vm.alignSelection(Align.Top) }
-            actions += tr("Dikey ortala") to { vm.alignSelection(Align.CenterV) }
-            actions += tr("Alta") to { vm.alignSelection(Align.Bottom) }
-            if (state.selection.size >= 3) {
-                actions += tr("Yatay dağıt") to { vm.distributeSelection(true) }
-                actions += tr("Dikey dağıt") to { vm.distributeSelection(false) }
-            }
-            if (state.selection.size >= 2) {
-                actions += tr("Yatay boşluk…") to { onSpacing(true) }
-                actions += tr("Dikey boşluk…") to { onSpacing(false) }
-            }
-            actions += tr(
-                when (state.alignTarget) {
-                    AlignTarget.Selection -> "Hedef: seçim"
-                    AlignTarget.Artboard -> "Hedef: çalışma yüzeyi"
-                    AlignTarget.Key -> "Hedef: anahtar nesne"
-                },
-            ) to vm::cycleAlignTarget
-
-        }
-        state.selection.isNotEmpty() && mode == 3 -> {
-            actions += tr("‹ Geri") to { mode = 0 }
-            actions += tr("Eğme yok") to { vm.setTextWarp(null, 0.0, done = true) }
-            for ((style, label) in WarpLabels) {
-                actions += tr(label) to { vm.setTextWarp(style, warpNode?.warp?.bend?.takeIf { it != 0.0 } ?: 0.5, done = true) }
-            }
-        }
-        state.selection.isNotEmpty() && mode == 2 -> {
-            actions += tr("‹ Geri") to { mode = 0 }
-            actions += tr("Birleştir") to { mode = 0; vm.pathfinder(BooleanOp.Unite) }
-            actions += tr("Öndekini çıkar") to { mode = 0; vm.pathfinder(BooleanOp.MinusFront) }
-            actions += tr("Kesiştir") to { mode = 0; vm.pathfinder(BooleanOp.Intersect) }
-            actions += tr("Dışla") to { mode = 0; vm.pathfinder(BooleanOp.Exclude) }
-            actions += tr("Maske yap") to { mode = 0; vm.makeClippingMask() }
-        }
-        state.selection.isNotEmpty() && mode == 4 -> {
-            actions += tr("‹ Geri") to { mode = 0 }
-            val nodes = state.selection.mapNotNull { doc.findNode(it) }
-            val paths = nodes.filterIsInstance<PathNode>()
-            if (paths.size >= 2) actions += tr("Bileşik yap") to { mode = 0; vm.makeCompoundPath() }
-            if (paths.size == 1 && nodes.size == 1 && paths[0].subpaths.size >= 2) actions += tr("Bileşiği çöz") to { mode = 0; vm.releaseCompoundPath() }
-            if (paths.any { p -> p.subpaths.any { !it.closed } }) actions += tr("Yolları birleştir") to { mode = 0; vm.joinSelection() }
-            if (paths.any { it.stroke != null }) actions += tr("Kontur ana hattı") to { mode = 0; vm.outlineStrokeCmd() }
-            if (paths.any { p -> p.subpaths.any { it.closed } }) actions += tr("Yolu ötele…") to { offsetDialog = true }
-            if (paths.size >= 2 && paths.size == nodes.size) actions += tr("Böl") to { mode = 0; vm.divideCmd() }
-        }
-        state.selection.isNotEmpty() -> {
-            val nodes = state.selection.mapNotNull { doc.findNode(it) }
-            val single = nodes.singleOrNull()
-            actions += tr("Hizala") to { mode = 1 }
-            if (nodes.size >= 2) actions += tr("Şekil") to { mode = 2 }
-            actions += tr("Dönüştür") to onTransform
-            if (single is GroupNode && single.clip != null) actions += tr("Maskeyi bırak") to vm::releaseClippingMask
-            if (single is ImageNode) actions += tr("Vektöre çevir") to vm::startTrace
-            if (single is TextNode) {
-                actions += tr("Metni düzenle") to vm::editSelectedText
-                actions += tr("Eğ") to { mode = 3 }
-                actions += tr("Yola çevir") to vm::outlineSelectedText
-            }
-            actions += tr("Kopyala") to { vm.copySelection(); Unit }
-            actions += tr("Kes") to vm::cutSelection
-            if (vm.canPaste) actions += tr("Yapıştır") to vm::paste
-            actions += tr("Çoğalt") to vm::duplicateSelection
-            if (nodes.size >= 2) actions += tr("Grupla") to vm::groupSelection
-            if (nodes.any { it is GroupNode }) actions += tr("Grubu çöz") to vm::ungroupSelection
-            actions += tr("Öne") to { vm.reorderSelection(ZMove.Forward) }
-            actions += tr("Arkaya") to { vm.reorderSelection(ZMove.Backward) }
-            actions += tr("En öne") to { vm.reorderSelection(ZMove.Front) }
-            actions += tr("En arkaya") to { vm.reorderSelection(ZMove.Back) }
-            actions += tr("Katmanda göster") to vm::revealSelectionInLayers
-            actions += tr("Dışa aktar…") to onExport
-            if (single != null) actions += tr("Adlandır") to { onRename(single.id) }
-            if (nodes.any { it is PathNode }) actions += tr("Yol") to { mode = 4 }
-            actions += tr("Dönüşüm araçları…") to onTransformTools
-            if (vm.lastTransform != null) actions += tr("Tekrar dönüştür") to vm::repeatTransform
-            actions += tr("Aynısını seç…") to onSelectSame
-            if (single != null) actions += tr("Kenarlara kılavuz") to vm::guidesFromSelection
-            actions += tr("Görünüm…") to onAppearance
-        }
-    }
-    if (state.pen == null && mode == 0) {
-        // Seçili düz köşeli yollarda köşe yarıçapı (canlı köşe yuvarlama): çizildikten sonra da ayarlanır.
-        val cornerPaths = state.selection.any { (doc.findNode(it) as? PathNode)?.hasStraightCorners() == true }
-        if (cornerPaths && state.tool != Tool.Direct) {
-            actions.add(0, tr("Köşe +") to { vm.adjustSelectionCorners(1) })
-            actions.add(0, tr("Köşe −") to { vm.adjustSelectionCorners(-1) })
-        }
-        // Şekil araçlarının ayarları (bir sonraki şekil için).
-        when (state.tool) {
-            Tool.RoundedRect -> if (!cornerPaths) {
-                actions.add(0, tr("Köşe +") to { vm.adjustCornerRatio(0.05) })
-                actions.add(0, tr("Köşe −") to { vm.adjustCornerRatio(-0.05) })
-            }
-            Tool.Polygon -> {
-                actions.add(0, tr("Kenar +") to { vm.adjustPolygonSides(1) })
-                actions.add(0, tr("Kenar −") to { vm.adjustPolygonSides(-1) })
-            }
-            Tool.Star -> {
-                actions.add(0, tr("İç +") to { vm.adjustStarInner(0.1) })
-                actions.add(0, tr("İç −") to { vm.adjustStarInner(-0.1) })
-                actions.add(0, tr("Uç +") to { vm.adjustStarPoints(1) })
-                actions.add(0, tr("Uç −") to { vm.adjustStarPoints(-1) })
-            }
-            else -> {}
-        }
-    }
-    if (actions.isEmpty()) return
-    // Silme düğmesi satırın sonunda sabit durur: eylemler kaydırılsa da her zaman görünür.
-    val canDelete = state.selection.isNotEmpty() && state.pen == null && !(state.tool == Tool.Direct && edit?.anchor != null)
-    val activeWarp = if (mode == 3) warpNode?.warp else null
-    val activeLabel = when {
-        mode != 3 -> null
-        activeWarp == null -> tr("Eğme yok")
-        else -> WarpLabels.firstOrNull { it.first == activeWarp.style }?.let { tr(it.second) }
-    }
-    Column(
-        modifier
-            .fillMaxWidth()
-            .background(AppColors.Panel.copy(alpha = 0.94f))
-            // Çubuğa dokunuş alttaki tuvale geçmesin.
-            .clickable(interactionSource = null, indication = null) {}
-            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
-    ) {
-    if (activeWarp != null) {
-        // Eğim sürgüsü: oynarken tuvalde anında görülür, bırakınca geçmişe işlenir.
-        var live by remember(activeWarp.style) { mutableStateOf(activeWarp.bend.toFloat()) }
-        Row(Modifier.padding(horizontal = 16.dp).height(40.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("%${(live * 100).roundToInt()}", Modifier.width(52.dp), style = MaterialTheme.typography.labelMedium, color = AppColors.OnPanelMuted)
-            Slider(
-                value = live,
-                onValueChange = { live = it; vm.setTextWarp(activeWarp.style, it.toDouble(), done = false) },
-                onValueChangeFinished = { vm.setTextWarp(activeWarp.style, live.toDouble(), done = true) },
-                valueRange = -1f..1f,
-                modifier = Modifier.weight(1f).semantics { contentDescription = tr("Eğim") },
-            )
-        }
-    }
-    Row(
-        Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-    // Eylemler değişince (başka tür nesne seçildi, alt menü açıldı) satır baştan gösterilir.
-    val scroll = rememberScrollState()
-    val shown = actions.joinToString("|") { it.first }
-    LaunchedEffect(shown) { scroll.scrollTo(0) }
-    Row(
-        Modifier
-            .weight(1f)
-            .semantics { contentDescription = tr("Seçim eylemleri") }
-            .horizontalScroll(scroll)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        // Her eylemin yanında simgesi durur (çeviriyle birlikte yeniden eşlenir).
-        val icons = remember(tr("Sil")) { ActionIcons.entries.associate { tr(it.key) to it.value } }
-        for ((label, action) in actions) {
-            val tint = when (label) {
-                tr("Düğümü sil") -> Color(0xFFFF8A8A)
-                activeLabel -> AppColors.Accent
-                else -> AppColors.OnPanel
-            }
-            Row(
-                Modifier
-                    .height(40.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(AppColors.PanelRaised)
-                    .clickable(role = Role.Button, onClick = action)
-                    .padding(start = 10.dp, end = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                icons[label]?.let {
-                    Icon(it, contentDescription = null, modifier = Modifier.size(18.dp), tint = tint)
-                    Spacer(Modifier.width(7.dp))
-                }
-                Text(label, color = tint, style = MaterialTheme.typography.labelLarge, maxLines = 1)
-            }
-        }
-    }
-    if (canDelete) {
-        IconButton(
-            onClick = vm::deleteSelection,
-            modifier = Modifier.padding(end = 4.dp).semantics { contentDescription = tr("Sil") },
-        ) {
-            Icon(AppIcons.Delete, contentDescription = null, tint = Color(0xFFFF8A8A))
-        }
-    }
-    }
-    }
-}
-
 /** Seçim çubuğundaki eylemlerin simgeleri; anahtarlar kaynak dildeki etiketlerdir. */
-private val ActionIcons: Map<String, ImageVector> by lazy {
+internal val ActionIcons: Map<String, ImageVector> by lazy {
     mapOf(
         "Bitir" to AppIcons.Check, "Kapat ve bitir" to AppIcons.Loop, "İptal" to AppIcons.Close,
         "Köşeye çevir" to AppIcons.Corner, "Yumuşat" to AppIcons.Arc, "Düğümü sil" to AppIcons.Delete,
@@ -794,13 +557,14 @@ private val ActionIcons: Map<String, ImageVector> by lazy {
         "Dışla" to AppIcons.Exclude, "Maske yap" to AppIcons.Mask, "Maskeyi bırak" to AppIcons.Unmask,
         "Kontur ana hattı" to AppIcons.Outline, "Yolu ötele…" to AppIcons.Offset, "Böl" to AppIcons.Divide,
         "Bileşik yap" to AppIcons.Compound, "Bileşiği çöz" to AppIcons.Release, "Yolları birleştir" to AppIcons.Join,
-        "Yol" to AppIcons.Nodes, "Dönüşüm araçları…" to AppIcons.Transform, "Tekrar dönüştür" to AppIcons.Transform,
-        "Aynısını seç…" to AppIcons.Select, "Görünüm…" to AppIcons.Effects, "Kenarlara kılavuz" to AppIcons.Guides,
+        "Yol" to AppIcons.Nodes, "Dönüşüm araçları…" to AppIcons.Rotate, "Tekrar dönüştür" to AppIcons.Repeat,
+        "Aynısını seç…" to AppIcons.SelectSame, "Görünüm…" to AppIcons.Effects, "Kenarlara kılavuz" to AppIcons.Guides,
         "Yatay boşluk…" to AppIcons.SpacingH, "Dikey boşluk…" to AppIcons.SpacingV,
         "Hedef: seçim" to AppIcons.Target, "Hedef: çalışma yüzeyi" to AppIcons.Target, "Hedef: anahtar nesne" to AppIcons.Target,
         "Köşe −" to AppIcons.RoundCorner, "Köşe +" to AppIcons.RoundCorner, "Kenar −" to AppIcons.Polygon, "Kenar +" to AppIcons.Polygon,
         "İç −" to AppIcons.Star, "İç +" to AppIcons.Star, "Uç −" to AppIcons.Star, "Uç +" to AppIcons.Star,
-        "Hizala" to AppIcons.AlignLeft, "Şekil" to AppIcons.Shapes, "Dönüştür" to AppIcons.Transform,
+        "Hizala" to AppIcons.AlignLeft, "Şekil" to AppIcons.Shapes, "Dönüştür" to AppIcons.Numeric,
+        "Tüm eylemler" to AppIcons.Apps,
         "Vektöre çevir" to AppIcons.Picture, "Metni düzenle" to AppIcons.Pencil, "Eğ" to AppIcons.Arc, "Yola çevir" to AppIcons.Nodes,
         "Kopyala" to AppIcons.Copy, "Kes" to AppIcons.Cut, "Yapıştır" to AppIcons.Paste, "Çoğalt" to AppIcons.Duplicate,
         "Grupla" to AppIcons.Group, "Grubu çöz" to AppIcons.Ungroup,
@@ -810,7 +574,7 @@ private val ActionIcons: Map<String, ImageVector> by lazy {
 }
 
 /** Metin eğme biçimleri ve (kaynak dildeki) adları. */
-private val WarpLabels = listOf(
+internal val WarpLabels = listOf(
     WarpStyle.Arc to "Yay",
     WarpStyle.Arch to "Kemer",
     WarpStyle.Wave to "Dalga",
